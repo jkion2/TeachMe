@@ -39,6 +39,7 @@ setup_chat_service()
 
 
 def get_links(image: bytes, context: str) -> dict:
+    print("Generating links... inside service_chat.py")
     image_data = {
         'mime_type' : 'image/jpeg',
         'data': base64.b64encode(image).decode('utf-8')

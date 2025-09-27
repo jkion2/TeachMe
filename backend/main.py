@@ -4,6 +4,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from service_chat import converse, get_links
 from service_manim import generate_manim_video
+from get_da_link import get_da_link
 
 from pydantic import BaseModel
 
@@ -27,18 +28,37 @@ app.add_middleware(
 async def read_root():
     return {"Hello": "World"}
 
+@app.post("/kushlinks")
+async def kushlinks(data: LinkRequest):
+    prompt = data.context
+    print(f"--- API HIT: /kushlinks ---")
+    print(f"Prompt received: {prompt[:50]}...")
 
-@app.post("/links")
-async def links(data: LinkRequest):
-    # --- New Logging ---
-    print(f"--- API HIT: /links ---")
-    print(f"Context received: {data.context[:50]}...")
-    print(f"Image string received: {data.image}")
-    # --- End Logging ---
-    dummy_image_bytes = b""
-    result_links = get_links(dummy_image_bytes, data.context)
-    """Endpoint for getting relevent links based on image and context."""
-    return {"links": result_links}
+    agent_response = await get_da_link(prompt)
+    print(f"Agent response received: {agent_response['summary_text'][:50]}...")
+
+    summary = agent_response['summary_text']
+    html_links = agent_response['search_html']
+    print(f"Rendered HTML received: {html_links[:50]}...")
+    print(f"summary received: {summary[:50]}...")
+    return {
+        "text": summary,
+        "html_links": html_links,
+        "source": "ADK Agent with Google Search"
+    }
+
+# @app.post("/links")
+# async def links(data: LinkRequest):
+#     # --- New Logging ---
+#     print(f"--- API HIT: /links ---")
+#     print(f"Context received: {data.context[:50]}...")
+#     print(f"Image string received: {data.image}")
+#     # --- End Logging ---
+#     dummy_image_bytes = b""
+#     result_links = get_links(dummy_image_bytes, data.context)
+#     print(f"Links generated: {result_links}")
+#     """Endpoint for getting relevent links based on image and context."""
+#     return {"links": result_links}
 
 
 @app.post("/chat")
