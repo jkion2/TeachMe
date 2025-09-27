@@ -1,0 +1,441 @@
+/* Main Layout Styles */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  background: #0a0a0a;
+  color: #ffffff;
+  /* Set fixed dimensions to maximize Chrome extension popup limits */
+  width: 800px;
+  height: 600px;
+  overflow: hidden;
+}
+
+.main-container {
+  display: flex;
+  /* Use fixed dimensions matching Chrome extension limits */
+  height: 600px;
+  width: 800px;
+}
+
+/* Sidebar Styles */
+.sidebar {
+  /* Increased sidebar width to better utilize 800px total width */
+  width: 350px;
+  min-width: 350px;
+  background: #171717;
+  border-right: 1px solid #404040;
+  display: flex;
+  flex-direction: column;
+  transition: width 0.3s ease;
+  position: relative;
+  z-index: 10;
+}
+
+.sidebar.collapsed {
+  width: 60px;
+  min-width: 60px;
+}
+
+.sidebar.collapsed .sidebar-header h2,
+.sidebar.collapsed .input-section,
+.sidebar.collapsed .sidebar-footer .toggle-history-btn {
+  display: none;
+}
+
+/* Sidebar Header */
+.sidebar-header {
+  padding: 16px 20px;
+  border-bottom: 1px solid #404040;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: #171717; /* Made header more prominent */
+}
+
+.sidebar-header h2 {
+  color: #ffffff;
+  font-size: 20px;
+  font-weight: 600;
+  letter-spacing: -0.02em; /* Better text styling like ChatGPT */
+}
+
+.collapse-btn {
+  background: #2a2a2a;
+  border: none;
+  color: #ffffff;
+  padding: 6px 10px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background 0.2s;
+  font-size: 14px; /* Better button styling */
+}
+
+.collapse-btn:hover {
+  background: #3a3a3a;
+}
+
+/* Input Section */
+.input-section {
+  flex: 1;
+  padding: 20px;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: #404040 #171717; /* Better scrolling behavior */
+}
+
+.input-section::-webkit-scrollbar {
+  width: 6px;
+}
+
+.input-section::-webkit-scrollbar-track {
+  background: #171717;
+}
+
+.input-section::-webkit-scrollbar-thumb {
+  background: #404040;
+  border-radius: 3px;
+}
+
+.input-section::-webkit-scrollbar-thumb:hover {
+  background: #505050;
+}
+
+.input-group {
+  margin-bottom: 20px;
+}
+
+.input-group label {
+  display: block;
+  margin-bottom: 8px;
+  color: #cccccc;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+textarea {
+  width: 100%;
+  background: #2a2a2a;
+  border: 1px solid #404040;
+  border-radius: 6px;
+  padding: 12px;
+  color: #ffffff;
+  font-size: 14px;
+  resize: vertical;
+  min-height: 80px;
+  line-height: 1.4; /* Better textarea styling like ChatGPT */
+}
+
+textarea:focus {
+  outline: none;
+  border-color: #10a37f; /* ChatGPT-like focus color */
+}
+
+.file-upload {
+  margin-top: 10px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.upload-btn {
+  background: #2a2a2a;
+  border: 1px solid #404040;
+  color: #ffffff;
+  padding: 8px 16px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: all 0.2s;
+}
+
+.upload-btn:hover {
+  background: #3a3a3a;
+  border-color: #505050;
+}
+
+#fileName {
+  color: #888888;
+  font-size: 12px;
+}
+
+.submit-btn {
+  width: 100%;
+  background: #10a37f;
+  border: none;
+  color: #ffffff;
+  padding: 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 16px;
+  font-weight: 600;
+  transition: background 0.2s;
+}
+
+.submit-btn:hover {
+  background: #0d8a6b;
+}
+
+.submit-btn:disabled {
+  background: #2a2a2a;
+  cursor: not-allowed;
+}
+
+/* Sidebar Footer */
+.sidebar-footer {
+  padding: 16px 20px;
+  border-top: 1px solid #404040;
+  background: #171717; /* Better footer styling */
+}
+
+
+/* Content Placeholder */
+.content-placeholder {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+  padding: 40px;
+  background: #0a0a0a;
+  /* Ensure content area uses remaining space efficiently */
+  width: 450px;
+}
+
+.content-placeholder h3 {
+  color: #ffffff;
+  font-size: 24px;
+  margin-bottom: 16px;
+}
+
+.content-placeholder p {
+  color: #888888;
+  font-size: 16px;
+  max-width: 400px;
+  line-height: 1.5;
+}
+
+/* Added video container styles for the new video functionality */
+/* Video Container Styles */
+.content-area {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  background: #0a0a0a;
+  width: 450px;
+}
+
+.video-container {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  padding: 20px;
+  background: #0a0a0a;
+}
+
+/* Video Loading State */
+.video-loading {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  height: 100%;
+  text-align: center;
+}
+
+.loading-spinner {
+  width: 40px;
+  height: 40px;
+  border: 3px solid #404040;
+  border-top: 3px solid #10a37f;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin-bottom: 16px;
+}
+
+@keyframes spin {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+.video-loading p {
+  color: #cccccc;
+  font-size: 16px;
+}
+
+/* Video Player Styles */
+.video-player {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+#mathVideo {
+  background: #1a1a1a;
+  border-radius: 8px;
+  margin-bottom: 16px;
+  border: 1px solid #404040;
+}
+
+/* Video Controls */
+.video-controls {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  padding: 16px 0;
+}
+
+.video-btn {
+  background: #2a2a2a;
+  border: 1px solid #404040;
+  color: #ffffff;
+  padding: 10px 16px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.video-btn:hover {
+  background: #3a3a3a;
+  border-color: #505050;
+}
+
+.video-btn:active {
+  background: #1a1a1a;
+}
+
+/* Special styling for primary action button */
+.video-btn#newQuestionBtn {
+  background: #10a37f;
+  border-color: #10a37f;
+}
+
+.video-btn#newQuestionBtn:hover {
+  background: #0d8a6b;
+}
+
+/* Chat Section Styles */
+.chat-section {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+}
+
+.chat-messages {
+    flex: 1;
+    padding: 20px;
+    overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: #404040 #171717;
+}
+
+.chat-messages::-webkit-scrollbar {
+    width: 6px;
+}
+
+.chat-messages::-webkit-scrollbar-track {
+    background: #171717;
+}
+
+.chat-messages::-webkit-scrollbar-thumb {
+    background: #404040;
+    border-radius: 3px;
+}
+
+.chat-message {
+    margin-bottom: 16px;
+    padding: 12px;
+    border-radius: 8px;
+    max-width: 90%;
+}
+
+.chat-message.user {
+    background: #2a2a2a;
+    color: #ffffff;
+    margin-left: auto;
+    text-align: right;
+}
+
+.chat-message.assistant {
+    background: #1a1a1a;
+    color: #cccccc;
+    border: 1px solid #404040;
+}
+
+/* Chat Input Container */
+.chat-input-container {
+    padding: 16px 20px;
+    border-top: 1px solid #404040;
+    background: #171717;
+}
+
+.chat-input-wrapper {
+    display: flex;
+    gap: 8px;
+    align-items: flex-end;
+}
+
+#chatInput {
+    flex: 1;
+    background: #2a2a2a;
+    border: 1px solid #404040;
+    border-radius: 6px;
+    padding: 10px 12px;
+    color: #ffffff;
+    font-size: 14px;
+    resize: none;
+    min-height: 20px;
+    max-height: 100px;
+    line-height: 1.4;
+}
+
+#chatInput:focus {
+    outline: none;
+    border-color: #10a37f;
+}
+
+.chat-send-btn {
+    background: #10a37f;
+    border: none;
+    color: #ffffff;
+    padding: 10px 12px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 16px;
+    transition: background 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.chat-send-btn:hover {
+    background: #0d8a6b;
+}
+
+.chat-send-btn:disabled {
+    background: #2a2a2a;
+    cursor: not-allowed;
+}
+
+/* Hide sections when collapsed */
+.sidebar.collapsed .input-section,
+.sidebar.collapsed .chat-section {
+    display: none;
+}
+
+/* Removed responsive design media queries since popup has fixed dimensions */
+/* Popup will always be 800x600, so responsive breakpoints aren't needed */

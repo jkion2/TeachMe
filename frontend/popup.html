@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MathLearn - Main Layout</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <!-- Main Layout Container -->
+    <div class="main-container">
+        <!-- Sidebar (always visible, collapsible) -->
+        <div class="sidebar" id="sidebar">
+            <!-- Sidebar Header -->
+            <div class="sidebar-header">
+                <h2>MathLearn</h2>
+                <button class="collapse-btn" id="collapseBtn">←</button>
+            </div>
+
+            <!-- Input Section -->
+            <div class="input-section">
+                <!-- Text OR Image Input -->
+                <div class="input-group">
+                    <label>Enter text or upload image:</label>
+                    <textarea id="textInput" placeholder="Enter your math question..."></textarea>
+                    <div class="file-upload">
+                        <input type="file" id="imageInput" accept="image/*" hidden>
+                        <button class="upload-btn" onclick="document.getElementById('imageInput').click()">
+                            📁 Upload Image
+                        </button>
+                        <span id="fileName"></span>
+                    </div>
+                </div>
+
+                <!-- Additional Context -->
+                <div class="input-group">
+                    <label>Additional context:</label>
+                    <textarea id="contextInput" placeholder="Add any additional context..."></textarea>
+                </div>
+
+                <!-- Submit Button -->
+                <button class="submit-btn" id="submitBtn">Submit</button>
+            </div>
+        </div>
+        <div class="chat-section" id="chatSection" style="display: none;">
+            <div class="chat-messages" id="chatMessages">
+                <!-- Chat messages will be appended here -->
+            </div>
+            <!-- Chat Input Bar -->
+            <div class="chat-input-container">
+                <div class="chat-input-wrapper">
+                    <textarea 
+                        id="chatInput" 
+                        placeholder="Ask a follow-up question..." 
+                        rows="1"></textarea>
+                    <button class="chat-send-btn" id="chatSendBtn">
+                        <span>↗️</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+        <!-- Main Content Area - UPDATED to support video mode -->
+        <div class="content-area" id="contentArea">
+            <div class="content-placeholder" id="placeholderContent">
+                <h3>Submit a question to see results</h3>
+                <p>Use the sidebar to enter your math question and get explanations with video demonstrations.</p>
+            </div>
+
+            <!-- Video Container (hidden initially, shown after submit) -->
+            <div class="video-container" id="videoContainer" style="display: none;">
+                <!-- Loading State -->
+                <div class="video-loading" id="videoLoading">
+                    <div class="loading-spinner"></div>
+                    <p>Generating your math explanation video...</p>
+                </div>
+
+                <!-- Video Player (hidden until loaded) -->
+                <div class="video-player" id="videoPlayer" style="display: none;">
+                    <video id="mathVideo" controls width="100%" height="400">
+                        <!-- Demo video source - replace with actual video URL -->
+
+                        Your browser does not support the video tag.
+                    </video>
+                    
+                    <!-- Video Controls -->
+                    <div class="video-controls">
+                        <button class="video-btn" id="playPauseBtn">⏸️ Pause</button>
+                        <button class="video-btn" id="downloadBtn">⬇️ Download</button>
+                        <button class="video-btn" id="uploadYoutubeBtn">📤 Upload to YouTube</button>
+                        <button class="video-btn" id="newQuestionBtn">➕ New Question</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="popup.js"></script>
+</body>
+</html>
