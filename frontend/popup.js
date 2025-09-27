@@ -122,6 +122,10 @@ function handleSubmit() {
   console.log("Image file:", imageFile ? imageFile.name : "None")
   console.log("Context:", contextValue)
 
+  if(sidebar.classList.contains("collapsed")) {
+    toggleSidebar()
+  }
+
   // Hide the placeholder content
   const placeholderContent = document.getElementById("placeholderContent")
   const videoContainer = document.getElementById("videoContainer")
