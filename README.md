@@ -1,1 +1,1 @@
-# TeachMe
+# TeachMe.ai

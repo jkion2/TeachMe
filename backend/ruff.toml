@@ -1,0 +1,20 @@
+line-length = 88
+lint.select = [
+    "E", # pycodestyle errors
+    "F", # pyflakes errors
+    "I", # isort issues
+    "B", # flake8-bugbear issues
+    "C", # mccabe complexity issues
+    "N", # pep8-naming issues
+    "Q", # flake8-quotes issues
+]
+exclude = [
+    "migrations",
+    "__pycache__",
+    "venv",
+    ".venv",
+    "env",
+    ".env",
+    "node_modules",
+    ".git",
+]
