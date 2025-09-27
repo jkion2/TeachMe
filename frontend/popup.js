@@ -158,13 +158,20 @@ async function handleSubmit() {
   showLoadingState()
 
   try {
+    let imageData = "TEXT_PLACEHOLDER"
+
+    if(imageFile){
+      imageData = await convertImageToBase64(imageFile)
+      console.log("Image converted to Base64")
+    }
+
     // Make the initial API call
     const response = await fetch(`${API_URL}/kushlinks`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
             context: fullContext,
-            image: "TEXT_PLACEHOLDER"
+            image: imageData
         })
     })
 
@@ -198,6 +205,18 @@ async function handleSubmit() {
     console.error("Error during initial submission:", error)
     resetToPlaceholder()
   }
+}
+
+function convertImageToBase64(file){
+  return new Promise((resolve, reject)=> {
+    const reader = new fileReader()
+    reader.onload = () => {
+      const base64 = reader.result.split(',')[1]
+      resolve(base64)
+    }
+    reader.oneerror = reject
+    reader.readDataasURL(file)
+  })
 }
 
 // UI State Management Functions
