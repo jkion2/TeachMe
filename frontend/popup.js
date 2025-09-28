@@ -314,13 +314,16 @@ async function handleSubmit() {
     showLoadingState()
 
     try {
-        // Prepare FormData for /links endpoint
-        const formData = new FormData()
-        formData.append('context', fullContext || '')
+        // Prepare FormData for both endpoints
+        const linksFormData = new FormData()
+        const manimFormData = new FormData()
+        
+        linksFormData.append('context', fullContext || '')
+        manimFormData.append('context', fullContext || '')
 
         // CHECK IF IMAGE DATA WAS RECEIVED FROM THE UPLOAD POPUP
         if (window.uploadedImageData && window.uploadedImageData.base64Data) {
-            // Convert base64 to blob and add to FormData
+            // Convert base64 to blob and add to both FormData objects
             const base64Data = window.uploadedImageData.base64Data
             const byteString = atob(base64Data.split(',')[1])
             const mimeString = base64Data.split(',')[0].split(':')[1].split(';')[0]
@@ -331,34 +334,47 @@ async function handleSubmit() {
                 ia[i] = byteString.charCodeAt(i)
             }
             
-            const blob = new Blob([ab], { type: mimeString })
-            formData.append('image', blob, window.uploadedImageData.fileName)
+            const blob1 = new Blob([ab], { type: mimeString })
+            const blob2 = new Blob([ab], { type: mimeString })
+            
+            linksFormData.append('image', blob1, window.uploadedImageData.fileName)
+            manimFormData.append('image', blob2, window.uploadedImageData.fileName)
             console.log("Using uploaded image:", window.uploadedImageData.fileName)
         }
 
-        // Make the initial API call to /links endpoint
-        const response = await fetch(`${API_URL}/links`, {
+        // Start both API calls in parallel
+        console.log("Starting parallel API calls to /links and /manim endpoints...")
+        
+        const linksPromise = fetch(`${API_URL}/links`, {
             method: "POST",
-            body: formData // Using FormData, no Content-Type header needed
+            body: linksFormData
+        })
+        
+        const manimPromise = fetch(`${API_URL}/manim`, {
+            method: "POST",
+            body: manimFormData
         })
 
-        if (!response.ok) {
-            throw new Error(`API error: ${response.statusText}`)
+        // Wait for links response first (should be much faster)
+        const linksResponse = await linksPromise
+        
+        if (!linksResponse.ok) {
+            throw new Error(`Links API error: ${linksResponse.statusText}`)
         }
 
-        const result = await response.json()
-        console.log("Links API Response:", result)
+        const linksResult = await linksResponse.json()
+        console.log("Links API Response:", linksResult)
         
         // Switch to chat mode
         switchToChatMode()
         
         // Display the links as the initial conversation
-        if (result.links && result.links.length > 0) {
-            const linksText = `I found ${result.links.length} relevant educational resources for your question:`
+        if (linksResult.links && linksResult.links.length > 0) {
+            const linksText = `I found ${linksResult.links.length} relevant educational resources for your question:`
             addChatMessage("assistant", linksText)
             
             // Create formatted links HTML
-            const linksHtml = result.links.map(link => 
+            const linksHtml = linksResult.links.map(link => 
                 `<div class="link-item">
                     <a href="${link.url}" target="_blank" class="link-title">${link.title}</a>
                     <p class="link-snippet">${link.snippet || ''}</p>
@@ -370,13 +386,73 @@ async function handleSubmit() {
             addChatMessage("assistant", "I'm ready to help with your question. Please ask me anything!")
         }
         
-        // Show video player (simulate completion)
-        showVideoPlayer()
+        // Show video player in loading state while manim processes
+        showVideoPlayerLoading()
+        
+        // Add status message about video generation
+        addChatMessage("assistant", "I'm generating a custom video explanation for your question. This may take up to 2-3 minutes...")
+        
+        // Handle manim response in background
+        handleManimResponse(manimPromise)
+        
     } catch (error) {
         console.error("Error during initial submission:", error)
         addChatMessage("assistant", "Sorry, I encountered an error processing your request. Please try again.")
         resetToPlaceholder()
     }
+}
+
+// Handle the manim API response separately
+async function handleManimResponse(manimPromise) {
+    try {
+        console.log("Waiting for manim video generation...")
+        const manimResponse = await manimPromise
+        
+        if (!manimResponse.ok) {
+            throw new Error(`Manim API error: ${manimResponse.statusText}`)
+        }
+
+        const manimResult = await manimResponse.json()
+        console.log("Manim API Response received:", manimResult.status)
+        
+        if (manimResult.video_data && manimResult.status === "success") {
+            // Store the video data for download functionality
+            window.generatedVideoData = manimResult.video_data
+            
+            // Convert base64 video data to blob URL
+            const videoBlob = base64ToBlob(manimResult.video_data, 'video/mp4')
+            const videoUrl = URL.createObjectURL(videoBlob)
+            
+            // Update video player with generated video
+            updateVideoPlayer(videoUrl)
+            
+            // Add success message to chat
+            addChatMessage("assistant", "🎉 Your custom video explanation is ready! You can watch it on the right side.")
+        } else {
+            throw new Error("Invalid manim response format")
+        }
+        
+    } catch (error) {
+        console.error("Error processing manim response:", error)
+        // Show fallback video and error message
+        showVideoPlayerWithFallback()
+        addChatMessage("assistant", "I encountered an issue generating your custom video, but I've provided a demo video instead. The educational resources above should still be helpful!")
+    }
+}
+
+// Helper function to convert base64 to blob
+function base64ToBlob(base64Data, contentType) {
+    // Remove data URL prefix if present
+    const base64String = base64Data.includes(',') ? base64Data.split(',')[1] : base64Data
+    const byteCharacters = atob(base64String)
+    const byteNumbers = new Array(byteCharacters.length)
+    
+    for (let i = 0; i < byteCharacters.length; i++) {
+        byteNumbers[i] = byteCharacters.charCodeAt(i)
+    }
+    
+    const byteArray = new Uint8Array(byteNumbers)
+    return new Blob([byteArray], { type: contentType })
 }
 
 // UI State Management Functions
@@ -416,6 +492,59 @@ function showVideoPlayer() {
   // Reset submit button
   submitBtn.disabled = false
   submitBtn.textContent = "Submit"
+}
+
+function showVideoPlayerLoading() {
+  const placeholderContent = document.getElementById("placeholderContent")
+  const videoContainer = document.getElementById("videoContainer")
+  const videoLoading = document.getElementById("videoLoading")
+  const videoPlayer = document.getElementById("videoPlayer")
+
+  // Show loading state for video
+  placeholderContent.style.display = "none"
+  videoContainer.style.display = "flex"
+  videoLoading.style.display = "flex"
+  videoPlayer.style.display = "none"
+
+  // Reset submit button
+  submitBtn.disabled = false
+  submitBtn.textContent = "Submit"
+
+  // Expand sidebar if collapsed
+  if (sidebar.classList.contains("collapsed")) {
+    toggleSidebar()
+  }
+}
+
+function showVideoPlayerWithFallback() {
+  const videoLoading = document.getElementById("videoLoading")
+  const videoPlayer = document.getElementById("videoPlayer")
+
+  // Hide loading, show video player
+  videoLoading.style.display = "none"
+  videoPlayer.style.display = "flex"
+
+  // Initialize video controls with fallback demo video
+  initializeVideoControlsWithFallback()
+}
+
+function updateVideoPlayer(videoUrl) {
+  const videoLoading = document.getElementById("videoLoading")
+  const videoPlayer = document.getElementById("videoPlayer")
+  const mathVideo = document.getElementById("mathVideo")
+
+  // Hide loading, show video player
+  videoLoading.style.display = "none"
+  videoPlayer.style.display = "flex"
+
+  // Set the generated video
+  mathVideo.src = videoUrl
+  mathVideo.load()
+
+  // Initialize controls for the generated video
+  initializeGeneratedVideoControls()
+
+  console.log("Video player updated with generated video")
 }
 
 function switchToChatMode() {
@@ -512,48 +641,97 @@ function clearChatMessages() {
 
 // Video Control Functions
 function initializeVideoControls() {
+  // This function is kept for backward compatibility but now delegates to fallback
+  initializeVideoControlsWithFallback()
+}
+
+function initializeVideoControlsWithFallback() {
   const mathVideo = document.getElementById("mathVideo")
   const playPauseBtn = document.getElementById("playPauseBtn")
   const downloadBtn = document.getElementById("downloadBtn")
   const newQuestionBtn = document.getElementById("newQuestionBtn")
 
-  // Set video source dynamically
+  // Set demo video source
   mathVideo.src = chrome.runtime.getURL("demo-math-video.mp4")
   
-  console.log("Video URL:", mathVideo.src)
+  console.log("Video URL (demo):", mathVideo.src)
   mathVideo.load()
 
+  setupVideoEventListeners(mathVideo, playPauseBtn, downloadBtn, newQuestionBtn, false)
+}
+
+function initializeGeneratedVideoControls() {
+  const mathVideo = document.getElementById("mathVideo")
+  const playPauseBtn = document.getElementById("playPauseBtn")
+  const downloadBtn = document.getElementById("downloadBtn")
+  const newQuestionBtn = document.getElementById("newQuestionBtn")
+
+  console.log("Video URL (generated):", mathVideo.src)
+
+  setupVideoEventListeners(mathVideo, playPauseBtn, downloadBtn, newQuestionBtn, true)
+}
+
+function setupVideoEventListeners(mathVideo, playPauseBtn, downloadBtn, newQuestionBtn, isGeneratedVideo) {
+  // Remove existing event listeners to avoid duplicates
+  const newPlayPauseBtn = playPauseBtn.cloneNode(true)
+  const newDownloadBtn = downloadBtn.cloneNode(true)
+  const newNewQuestionBtn = newQuestionBtn.cloneNode(true)
+  
+  playPauseBtn.parentNode.replaceChild(newPlayPauseBtn, playPauseBtn)
+  downloadBtn.parentNode.replaceChild(newDownloadBtn, downloadBtn)
+  newQuestionBtn.parentNode.replaceChild(newNewQuestionBtn, newQuestionBtn)
+
   // Play/Pause functionality
-  playPauseBtn.addEventListener("click", () => {
+  newPlayPauseBtn.addEventListener("click", () => {
     if (mathVideo.paused) {
       mathVideo.play()
-      playPauseBtn.textContent = "⏸️ Pause"
+      newPlayPauseBtn.textContent = "⏸️ Pause"
     } else {
       mathVideo.pause()
-      playPauseBtn.textContent = "▶️ Play"
+      newPlayPauseBtn.textContent = "▶️ Play"
     }
   })
 
   // Download functionality
-  downloadBtn.addEventListener("click", () => {
+  newDownloadBtn.addEventListener("click", () => {
     const a = document.createElement('a')
-    a.href = mathVideo.src
-    a.download = 'math-solution.mp4'
+    
+    if (isGeneratedVideo && window.generatedVideoData) {
+      // Download the generated video using the stored base64 data
+      const videoBlob = base64ToBlob(window.generatedVideoData, 'video/mp4')
+      const videoUrl = URL.createObjectURL(videoBlob)
+      a.href = videoUrl
+      a.download = 'generated-math-solution.mp4'
+    } else {
+      // Download the demo video
+      a.href = mathVideo.src
+      a.download = 'demo-math-solution.mp4'
+    }
+    
     a.click()
+    
+    // Clean up blob URL if it was created
+    if (isGeneratedVideo && a.href.startsWith('blob:')) {
+      setTimeout(() => URL.revokeObjectURL(a.href), 1000)
+    }
   })
 
   // New Question functionality
-  newQuestionBtn.addEventListener("click", () => {
+  newNewQuestionBtn.addEventListener("click", () => {
+    // Clean up any blob URLs
+    if (mathVideo.src.startsWith('blob:')) {
+      URL.revokeObjectURL(mathVideo.src)
+    }
     resetToPlaceholder()
   })
 
   // Auto-update play/pause button
   mathVideo.addEventListener("play", () => {
-    playPauseBtn.textContent = "⏸️ Pause"
+    newPlayPauseBtn.textContent = "⏸️ Pause"
   })
 
   mathVideo.addEventListener("pause", () => {
-    playPauseBtn.textContent = "▶️ Play"
+    newPlayPauseBtn.textContent = "▶️ Play"
   })
 
   // Error handling
@@ -570,6 +748,15 @@ function initializeVideoControls() {
 function resetToPlaceholder() {
   const placeholderContent = document.getElementById("placeholderContent")
   const videoContainer = document.getElementById("videoContainer")
+  const mathVideo = document.getElementById("mathVideo")
+
+  // Clean up any blob URLs to prevent memory leaks
+  if (mathVideo && mathVideo.src && mathVideo.src.startsWith('blob:')) {
+    URL.revokeObjectURL(mathVideo.src)
+  }
+
+  // Clean up stored video data
+  window.generatedVideoData = null
 
   // Hide video container, show placeholder
   videoContainer.style.display = "none"
@@ -589,6 +776,7 @@ function clearInputs() {
   textInput.value = ""
   contextInput.value = ""
   window.uploadedImageData = null
+  window.generatedVideoData = null
   fileName.textContent = ""
   validateInputs()
 }

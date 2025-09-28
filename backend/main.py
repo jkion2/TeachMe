@@ -118,28 +118,32 @@ async def chat(data: ChatRequest):
 
 
 @app.post("/manim")
-async def manim(context: str = Form(...), image: UploadFile = File(...)):
+async def manim(context: Optional[str] = Form(""), image: Optional[UploadFile] = File(None)):
     """Endpoint for generating a Manim video based on uploaded image and context."""
     try:
         print(f"--- API HIT: /manim ---")
         print(f"Context received: {context[:50]}...")
-        print(f"Image file received: {image.filename}")
+        # print(f"Image file received: {image.filename}")
 
-        # Read the uploaded image
-        try:
-            image_bytes: bytes = await image.read()
-            print(f"Read image size: {len(image_bytes)} bytes")
-        except Exception as img_error:
-            print(f"Error reading image file: {img_error}")
-            raise HTTPException(
-                status_code=400, detail=f"Failed to read image file: {str(img_error)}"
-            )
+        if image:
+            # Read the uploaded image
+            try:
+                image_bytes: bytes = await image.read()
+                print(f"Read image size: {len(image_bytes)} bytes")
+            except Exception as img_error:
+                print(f"Error reading image file: {img_error}")
+                raise HTTPException(
+                    status_code=400, detail=f"Failed to read image file: {str(img_error)}"
+                )
 
-        encoded_image: str = base64.b64encode(image_bytes).decode("utf-8")
+            encoded_image: str = base64.b64encode(image_bytes).decode("utf-8")
 
-        # Generate video using the manim service
-        print("Generating Manim video...")
-        result: str = await generate_manim_video(encoded_image, context)
+            # Generate video using the manim service
+            print("Generating Manim video...")
+            result: str = await generate_manim_video(encoded_image, context)
+        
+        else:
+            result: str = await generate_manim_video(None, context)
 
         print(f"Generated video size: {len(result)} bytes")
         print("Returning Manim video...")
