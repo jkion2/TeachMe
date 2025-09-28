@@ -70,7 +70,7 @@ async function handleChatSend() {
         console.log("Sending chat message to API:", message)
         
         // Make API call
-        const response = await fetch(`${API_URL}/kushlinks`, {
+        const response = await fetch(`${API_URL}/chat`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
@@ -159,44 +159,87 @@ async function handleSubmit() {
 
   try {
     let imageData = "TEXT_PLACEHOLDER"
-
-    if(imageFile){
-      imageData = await convertImageToBase64(imageFile)
-      console.log("Image converted to Base64")
+    const formData = new FormData()
+    formData.append("context", fullContext)
+    if (imageFile) {
+        formData.append('image', imageFile);
     }
 
-    // Make the initial API call
-    const response = await fetch(`${API_URL}/kushlinks`, {
+    // 4. Make the API call using FormData
+    const response = await fetch(`${API_URL}/links`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-            context: fullContext,
-            image: imageData
-        })
+        body: formData // Pass the FormData object directly
     })
 
+    // --- (Rest of your success/error handling logic) ---
+    console.log("API Response Status:", response.status, response.statusText);
     if (!response.ok) {
         throw new Error(`API error: ${response.statusText}`)
     }
 
-    const result = await response.json()
-    console.log("Initial API Response:", result)
-    
-    // Extract response data
-    const summaryText = result.text || "No summary provided."
-    const linksHtml = result.html_links
-    const cleanSummary = summaryText.replace("##ADK_RESPONSE_END##", "").trim()
+    const result = await response.json();
+    console.log("API Response Data:", result);
 
+    if (!response.ok) {
+        throw new Error(`API error: ${response.statusText}`)
+    }
     // Switch to chat mode
     switchToChatMode()
-    
+
+    let formattedMessage = ""
+    if (Array.isArray(result) && result.length > 0) {
+            console.log("Processing array of", result.length, "links")
+            
+            // Start with a header
+            formattedMessage = `I found ${result.length} helpful resources for you:\n\n`
+            
+            // STEP 3: Loop through each link object and extract the data
+            result.forEach((linkObject, index) => {
+                console.log(`Processing link ${index + 1}:`, linkObject)
+                
+                // Extract the specific properties we want
+                const title = linkObject.title || "No title available"
+                const url = linkObject.url || "No URL available"
+                const snippet = linkObject.snippet || "No description available"
+                const relevanceScore = linkObject.relevance_score || 0
+                
+                console.log(`Link ${index + 1} extracted data:`, {
+                    title: title,
+                    url: url,
+                    snippet: snippet.substring(0, 50) + "...",
+                    relevance: relevanceScore
+                })
+                
+                // STEP 4: Format each link nicely as a string
+                formattedMessage += `${index + 1}. ${title}\n`
+                
+                // Only show URL if it's not 'N/A'
+                if (url !== 'N/A') {
+                    formattedMessage += `   🔗 ${url}\n`
+                }
+                
+                formattedMessage += `   📝 ${snippet}\n`
+                formattedMessage += `   📊 Relevance: ${Math.round(relevanceScore * 100)}%\n\n`
+            })
+            
+        } else {
+            console.log("No links found or result is not an array")
+            formattedMessage = "I couldn't find any relevant resources for your question. Try rephrasing it!"
+        }
+        
+        // STEP 5: Log the final formatted message
+        console.log("Final formatted message:")
+        console.log("Message length:", formattedMessage.length)
+        console.log("Message preview:", formattedMessage.substring(0, 200) + "...")
+  
     // Add initial assistant response
-    addChatMessage("assistant", cleanSummary)
+    console.log("Adding chat message with formatted string")
+    addChatMessage("assistant", formattedMessage)
     
-    // Add HTML links if available
-    if (linksHtml) {
-        addHtmlMessage("assistant-html", linksHtml)
-    }
+    // // Add HTML links if available
+    // if (linksHtml) {
+    //     addHtmlMessage("assistant-html", linksHtml)
+    // }
     
     // Show video player (simulate completion)
     showVideoPlayer()
@@ -206,6 +249,7 @@ async function handleSubmit() {
     resetToPlaceholder()
   }
 }
+
 
 function convertImageToBase64(file){
   return new Promise((resolve, reject)=> {
@@ -297,16 +341,16 @@ function addChatMessage(sender, message) {
 /**
  * Adds HTML content to chat (for search result links)
  */
-function addHtmlMessage(sender, htmlContent) {
-    const chatMessages = document.getElementById("chatMessages");
-    const messageDiv = document.createElement("div");
-    messageDiv.className = `chat-message ${sender}`;
+// function addHtmlMessage(sender, htmlContent) {
+//     const chatMessages = document.getElementById("chatMessages");
+//     const messageDiv = document.createElement("div");
+//     messageDiv.className = `chat-message ${sender}`;
     
-    // Render HTML content
-    messageDiv.innerHTML = htmlContent;
-    chatMessages.appendChild(messageDiv);
-    chatMessages.scrollTop = chatMessages.scrollHeight;
-}
+//     // Render HTML content
+//     messageDiv.innerHTML = htmlContent;
+//     chatMessages.appendChild(messageDiv);
+//     chatMessages.scrollTop = chatMessages.scrollHeight;
+// }
 
 function clearChatMessages() {
     const chatMessages = document.getElementById("chatMessages")
