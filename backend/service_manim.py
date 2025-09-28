@@ -1,4 +1,5 @@
 import asyncio
+import base64
 from dataclasses import dataclass
 
 import dotenv
@@ -19,7 +20,7 @@ class VideoContext:
 
 def convert_image_to_part(image: str) -> Part:
     # Decode the base64 string to bytes
-    image_bytes = image.encode("utf-8")
+    image_bytes: bytes = base64.b64decode(image)
 
     # Create a blob from the bytes
     blob = Blob(data=image_bytes, mime_type="image/png")
