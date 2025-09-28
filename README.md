@@ -104,10 +104,10 @@ uv run uvicorn main:app --reload --port 8000
 ## Team
 
 Built at ShellHacks 2025 by:  
-- **Alvin Abraham** – Full Stack & Architecture
-- **Samarth Upadhya** – Full Stack & AI  
-- **Kush Havinal** – Frontend & Extension  
-- **Marion Forrest** – Backend & Manim    
+- **Alvin Abraham** – Full Stack 
+- **Samarth Upadhya** – Full Stack 
+- **Kush Havinal** – Frontend   
+- **Marion Forrest** – Backend     
 
 ---
 
