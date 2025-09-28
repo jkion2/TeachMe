@@ -14,7 +14,7 @@ class Timer:
         self.duration = 0
 
     def __enter__(self):
-        print(f"{datetime.now().strftime('%Y-%m-%d %H:%M:%S')} - Starting {self.task}")
+        print(f"{datetime.now().strftime('%Y-%m-%d %H:%M:%S')} - Starting: {self.task}")
         self.start_time = perf_counter()
         return self
 
@@ -22,7 +22,7 @@ class Timer:
         self.end_time = perf_counter()
         self.duration = self.end_time - self.start_time
         print(
-            f"{datetime.now().strftime('%Y-%m-%d %H:%M:%S')} - {self.task} took {self.duration:.3f} seconds"
+            f"{datetime.now().strftime('%Y-%m-%d %H:%M:%S')} - Task ({self.task}) took {self.duration:.3f} seconds"
         )
 
 

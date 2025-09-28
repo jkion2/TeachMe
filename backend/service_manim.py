@@ -117,6 +117,6 @@ if __name__ == "__main__":
         asyncio.run(
             generate_manim_video(
                 None,
-                "This is a test. Just draw a circle. Do not explain anything. Just draw a circle.",
+                "This is a test. Just draw a circle. **Do Not** explain anything. Just draw a circle.",
             )
         )
