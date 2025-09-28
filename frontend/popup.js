@@ -355,7 +355,31 @@ async function handleSubmit() {
             body: manimFormData
         })
 
-        // Wait for links response first (should be much faster)
+        // Switch to chat mode immediately to enable user interaction
+        switchToChatMode()
+        
+        // Show video player in loading state while manim processes
+        showVideoPlayerLoading()
+        
+        // Add initial status messages
+        addChatMessage("assistant", "I'm searching for relevant educational resources and generating a custom video explanation for your question...")
+        addChatMessage("assistant", "The video generation may take up to 2-3 minutes, but you can chat with me while it processes!")
+        
+        // Handle both responses in parallel without blocking chat
+        handleLinksResponse(linksPromise)
+        handleManimResponse(manimPromise)
+        
+    } catch (error) {
+        console.error("Error during initial submission:", error)
+        addChatMessage("assistant", "Sorry, I encountered an error starting the process. Please try again.")
+        resetToPlaceholder()
+    }
+}
+
+// Handle the links API response separately
+async function handleLinksResponse(linksPromise) {
+    try {
+        console.log("Processing links response...")
         const linksResponse = await linksPromise
         
         if (!linksResponse.ok) {
@@ -365,10 +389,7 @@ async function handleSubmit() {
         const linksResult = await linksResponse.json()
         console.log("Links API Response:", linksResult)
         
-        // Switch to chat mode
-        switchToChatMode()
-        
-        // Display the links as the initial conversation
+        // Display the links as they become available
         if (linksResult.links && linksResult.links.length > 0) {
             const linksText = `I found ${linksResult.links.length} relevant educational resources for your question:`
             addChatMessage("assistant", linksText)
@@ -383,22 +404,12 @@ async function handleSubmit() {
             
             addHtmlMessage("assistant-html", `<div class="links-container">${linksHtml}</div>`)
         } else {
-            addChatMessage("assistant", "I'm ready to help with your question. Please ask me anything!")
+            addChatMessage("assistant", "I couldn't find specific resources, but I'm ready to help answer your questions directly!")
         }
         
-        // Show video player in loading state while manim processes
-        showVideoPlayerLoading()
-        
-        // Add status message about video generation
-        addChatMessage("assistant", "I'm generating a custom video explanation for your question. This may take up to 2-3 minutes...")
-        
-        // Handle manim response in background
-        handleManimResponse(manimPromise)
-        
     } catch (error) {
-        console.error("Error during initial submission:", error)
-        addChatMessage("assistant", "Sorry, I encountered an error processing your request. Please try again.")
-        resetToPlaceholder()
+        console.error("Error processing links response:", error)
+        addChatMessage("assistant", "I encountered an issue finding resources, but I'm still here to help answer your questions!")
     }
 }
 
@@ -427,7 +438,7 @@ async function handleManimResponse(manimPromise) {
             updateVideoPlayer(videoUrl)
             
             // Add success message to chat
-            addChatMessage("assistant", "🎉 Your custom video explanation is ready! You can watch it on the right side.")
+            addChatMessage("assistant", "🎉 Your custom video explanation is ready! You can watch it in the video player.")
         } else {
             throw new Error("Invalid manim response format")
         }
