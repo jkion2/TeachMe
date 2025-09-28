@@ -60,7 +60,7 @@ function handleUploadButtonClick(event){
     url: chrome.runtime.getURL('upload.html'),
     type: 'popup',
     width: 520,
-    height: 420,
+    height: 520,
     focused: true
   }, (window) =>{
     if (chrome.runtime.lastError){
@@ -159,9 +159,9 @@ async function handleChatSend() {
         addChatMessage("assistant", cleanSummary)
         
         // Add HTML links if available
-        if (linksHtml) {
-            addHtmlMessage("assistant-html", linksHtml)
-        }
+        // if (linksHtml) {
+        //     addHtmlMessage("assistant-html", linksHtml)
+        // }
         
     } catch (error) {
         console.error("Error during chat API call:", error)
@@ -199,6 +199,9 @@ async function handleSubmit() {
     console.log("Starting initial submission...")
     console.log("Full context:", fullContext)
 
+    const formData = new FormData()
+    formData.append("context", fullContext)
+
     // Show loading UI
     showLoadingState()
 
@@ -210,44 +213,81 @@ async function handleSubmit() {
             imageData = window.uploadedImageData.base64Data
             console.log("Using Uploaded Image:", window.uploadedImageData.fileName)
         }
-        // NOTE: The separate convertImageToBase64 function is now redundant as 
-        // the image is pre-converted in the upload page and stored in window.uploadedImageData.
 
-        // Make the initial API call
-        const response = await fetch(`${API_URL}/kushlinks`, {
+        formData.append("image", imageData) // Placeholder for image data
+
+        const response = await fetch(`${API_URL}/links`, {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-                context: fullContext,
-                image: imageData
-            })
+            body: formData
         })
 
         if (!response.ok) {
             throw new Error(`API error: ${response.statusText}`)
         }
+        console.log("Initial submission response received")
 
         const result = await response.json()
         console.log("Initial API Response:", result)
         
         // Extract response data
-        const summaryText = result.text || "No summary provided."
-        const linksHtml = result.html_links
-        const cleanSummary = summaryText.replace("##ADK_RESPONSE_END##", "").trim()
+        // const summaryText = result.text || "No summary provided."
+        // const linksHtml = result.html_links
+        // const cleanSummary = summaryText.replace("##ADK_RESPONSE_END##", "").trim()
+
+        // Process the response - YOUR BACKEND RETURNS: {"links": [...], "status": "success"}
+        if (result.links && Array.isArray(result.links)) {
+            console.log("Processing", result.links.length, "links")
+            
+            // Create formatted message
+            let formattedMessage = `I found ${result.links.length} helpful resources for you:\n\n`
+            
+            result.links.forEach((linkObject, index) => {
+                console.log(`Processing link ${index + 1}:`, {
+                    title: linkObject.title?.substring(0, 50) + "...",
+                    url: linkObject.url,
+                    relevance: linkObject.relevance_score
+                })
+                
+                const title = linkObject.title || "No title available"
+                const url = linkObject.url || "No URL available"
+                const snippet = linkObject.snippet || "No description available"
+                const relevanceScore = linkObject.relevance_score || 0
+                
+                formattedMessage += `${index + 1}. ${title}\n`
+                
+                if (url !== 'N/A' && url !== 'No URL available') {
+                    formattedMessage += `   🔗 ${url}\n`
+                }
+                
+                formattedMessage += `   📝 ${snippet}\n`
+                formattedMessage += `   📊 Relevance: ${Math.round(relevanceScore * 100)}%\n\n`
+            })
+            
+            // Switch to chat mode and show results
+            switchToChatMode()
+            addChatMessage("assistant", formattedMessage)
+            showVideoPlayer()
+            
+        } else {
+            console.error("No links found in response or invalid format")
+            switchToChatMode()
+            addChatMessage("assistant", "I couldn't find any relevant resources. Try rephrasing your question!")
+            showVideoPlayer()
+        }
 
         // Switch to chat mode
-        switchToChatMode()
+        //switchToChatMode()
         
         // Add initial assistant response
-        addChatMessage("assistant", cleanSummary)
+        //addChatMessage("assistant", )
         
         // Add HTML links if available
-        if (linksHtml) {
-            addHtmlMessage("assistant-html", linksHtml)
-        }
+        // if (linksHtml) {
+        //     addHtmlMessage("assistant-html", linksHtml)
+        // }
         
         // Show video player (simulate completion)
-        showVideoPlayer()
+        //showVideoPlayer()
     } catch (error) {
         console.error("Error during initial submission:", error)
         resetToPlaceholder()
@@ -374,10 +414,11 @@ function initializeVideoControls() {
 
   // Download functionality
   downloadBtn.addEventListener("click", () => {
-    const a = document.createElement('a')
-    a.href = mathVideo.src
-    a.download = 'math-solution.mp4'
-    a.click()
+    downloadVideoReliable()
+    // const a = document.createElement('a')
+    // a.href = mathVideo.src
+    // a.download = 'math-solution.mp4'
+    // a.click()
   })
 
   // New Question functionality
@@ -403,6 +444,50 @@ function initializeVideoControls() {
   mathVideo.play().catch((e) => {
     console.log("Auto-play prevented:", e)
   })
+}
+
+async function downloadVideoReliable() {
+    const mathVideo = document.getElementById("mathVideo")
+    const downloadBtn = document.getElementById("downloadBtn")
+    
+    try {
+        console.log("Starting video download...")
+        downloadBtn.disabled = true
+        downloadBtn.textContent = "⬇️ Downloading..."
+        
+        // Fetch the video as blob
+        const response = await fetch(mathVideo.src)
+        if (!response.ok) {
+            throw new Error(`Failed to fetch video: ${response.statusText}`)
+        }
+        
+        const blob = await response.blob()
+        console.log("Video blob size:", blob.size, "bytes")
+        
+        // Create download link
+        const url = URL.createObjectURL(blob)
+        const a = document.createElement('a')
+        a.href = url
+        a.download = 'math-solution.mp4'
+        a.style.display = 'none'
+        
+        // Add to DOM, click, then remove
+        document.body.appendChild(a)
+        a.click()
+        document.body.removeChild(a)
+        
+        // Clean up the blob URL
+        setTimeout(() => URL.revokeObjectURL(url), 100)
+        
+        console.log("Video download initiated successfully")
+        
+    } catch (error) {
+        console.error("Download failed:", error)
+        alert("Download failed. Please try again.")
+    } finally {
+        downloadBtn.disabled = false
+        downloadBtn.textContent = "⬇️ Download"
+    }
 }
 
 function resetToPlaceholder() {
