@@ -214,7 +214,7 @@ async function handleSubmit() {
         // the image is pre-converted in the upload page and stored in window.uploadedImageData.
 
         // Make the initial API call
-        const response = await fetch(`${API_URL}/kushlinks`, {
+        const response = await fetch(`${API_URL}/links`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
