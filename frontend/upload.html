@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Upload Image - MathLearn</title>
+    <link rel="stylesheet" href="styles.css">
+    <style>
+        /* Additional styles specific to upload page */
+        body {
+            width: 500px;
+            height: 400px;
+            padding: 0;
+            margin: 0;
+        }
+
+        .upload-container {
+            width: 100%;
+            height: 100%;
+            background: #0a0a0a;
+            display: flex;
+            flex-direction: column;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+
+        .upload-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 12px;
+            border-bottom: 1px solid #404040;
+        }
+
+        .upload-header h2 {
+            color: #ffffff;
+            font-size: 20px;
+            font-weight: 600;
+            letter-spacing: -0.02em;
+            margin: 0;
+        }
+
+        .close-btn {
+            background: #2a2a2a;
+            border: 1px solid #404040;
+            color: #ffffff;
+            padding: 6px 10px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 18px;
+            transition: all 0.2s;
+            width: 32px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .close-btn:hover {
+            background: #3a3a3a;
+            border-color: #505050;
+        }
+
+        .drop-zone {
+            flex: 1;
+            border: 2px dashed #404040;
+            border-radius: 8px;
+            padding: 40px 20px;
+            text-align: center;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #171717;
+        }
+
+        .drop-zone.drag-over {
+            border-color: #10a37f;
+            background: rgba(16, 163, 127, 0.1);
+        }
+
+        .drop-content {
+            width: 100%;
+        }
+
+        .upload-icon {
+            font-size: 48px;
+            margin-bottom: 16px;
+            opacity: 0.7;
+        }
+
+        .drop-content h3 {
+            color: #ffffff;
+            font-size: 18px;
+            margin-bottom: 20px;
+            font-weight: 500;
+        }
+
+        .upload-method-btn {
+            background: #10a37f;
+            border: none;
+            color: #ffffff;
+            padding: 12px 24px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            transition: background 0.2s;
+            margin: 10px 0;
+        }
+
+        .upload-method-btn:hover {
+            background: #0d8a6b;
+        }
+
+        .or-divider {
+            margin: 20px 0;
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .or-divider::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 20px;
+            right: 20px;
+            height: 1px;
+            background: #404040;
+        }
+
+        .or-divider span {
+            background: #171717;
+            padding: 0 15px;
+            color: #888888;
+            font-size: 14px;
+        }
+
+        .paste-section p {
+            margin: 8px 0;
+            color: #cccccc;
+            font-size: 14px;
+            line-height: 1.4;
+        }
+
+        .preview-section {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+        }
+
+        .preview-section h3 {
+            color: #ffffff;
+            font-size: 16px;
+            margin-bottom: 15px;
+            font-weight: 500;
+        }
+
+        .preview-section img {
+            max-width: 200px;
+            max-height: 120px;
+            border: 1px solid #404040;
+            border-radius: 6px;
+            margin-bottom: 10px;
+        }
+
+        .preview-section p {
+            color: #888888;
+            font-size: 12px;
+            margin-bottom: 15px;
+        }
+
+        .preview-actions {
+            display: flex;
+            gap: 10px;
+        }
+
+        .primary-btn {
+            background: #10a37f;
+            border: none;
+            color: #ffffff;
+            padding: 10px 20px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            transition: background 0.2s;
+        }
+
+        .primary-btn:hover {
+            background: #0d8a6b;
+        }
+
+        .secondary-btn {
+            background: #2a2a2a;
+            border: 1px solid #404040;
+            color: #ffffff;
+            padding: 10px 20px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.2s;
+        }
+
+        .secondary-btn:hover {
+            background: #3a3a3a;
+            border-color: #505050;
+        }
+    </style>
+</head>
+<body>
+    <div class="upload-container">
+        <div class="upload-header">
+            <h2>Upload Image</h2>
+            <button id="closeBtn" class="close-btn">&times;</button>
+        </div>
+        
+        <div id="dropZone" class="drop-zone">
+            <div class="drop-content">
+                <div class="upload-icon">📁</div>
+                <h3>Choose how to add your image</h3>
+                
+                <button id="browseBtn" class="upload-method-btn">
+                    📂 Browse Files
+                </button>
+                
+                <div class="or-divider">
+                    <span>or</span>
+                </div>
+                
+                <div class="paste-section">
+                    <p>📋 Paste a screenshot (Ctrl+V)</p>
+                    <p>🖱️ Drag & drop an image here</p>
+                </div>
+            </div>
+        </div>
+        
+        <input type="file" id="fileInput" accept="image/*" style="display: none;">
+        
+        <div id="previewSection" class="preview-section" style="display: none;">
+            <h3>Preview</h3>
+            <img id="previewImage" alt="Preview">
+            <p id="fileName"></p>
+            <div class="preview-actions">
+                <button id="useImageBtn" class="primary-btn">Use This Image</button>
+                <button id="removeImageBtn" class="secondary-btn">Remove</button>
+            </div>
+        </div>
+    </div>
+    
+    <script src="upload.js"></script>
+</body>
+</html>

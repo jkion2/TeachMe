@@ -1,0 +1,14 @@
+{
+  "manifest_version": 3,
+  "name": "TeachMe - Math Question Assistant",
+  "version": "1.0.0",
+  "description": "AI-powered math question assistant with video explanations",
+  "permissions": ["activeTab", "storage"],
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "TeachMe Assistant"
+  },
+  "content_security_policy": {
+    "extension_pages": "script-src 'self'; object-src 'self'"
+  }
+}
