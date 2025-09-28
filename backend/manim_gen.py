@@ -138,11 +138,6 @@ def fetch_desired_video() -> str:
     # get the related video
     try:
         file_name: str = code_path.split("/")[-1]
-        video_path: str = fetch_video(file_name)
+        return fetch_video(file_name)
     except FileNotFoundError:
         raise Exception(f"Video failed to compile: {code_path}")
-
-    # encode the video
-    with open(video_path, "rb") as file:
-        video_data = file.read()
-    return base64.b64encode(video_data).decode("utf-8")
