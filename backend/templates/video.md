@@ -73,6 +73,7 @@ class SolutionAnimation(Scene):
 - **TypeError**: Mobject.__getattr__.<locals>.getter() got an unexpected keyword argument 'color`
 - **TypeError**: Mobject.next_to() got an unexpected keyword argument 'align'
 - **AttributeError**: ParametricFunction object has no attribute 'angle'
+- **TypeError**: Mobject.__getattr__.<locals>.setter() takes 2 positional arguments but 3 were given
 
 ---
 
