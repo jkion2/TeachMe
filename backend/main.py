@@ -11,7 +11,6 @@ from service_manim import generate_manim_video
 
 import dotenv
 dotenv.load_dotenv()
-from get_da_link import get_da_link
 
 from pydantic import BaseModel
 
@@ -38,25 +37,6 @@ app.add_middleware(
 async def read_root():
     return {"Hello": "World"}
 
-
-# @app.post("/kushlinks")
-# async def kushlinks(data: LinkRequest):
-#     prompt = data.context
-#     print(f"--- API HIT: /kushlinks ---")
-#     print(f"Prompt received: {prompt[:50]}...")
-
-#     agent_response = await get_da_link(prompt)
-#     print(f"Agent response received: {agent_response['summary_text'][:50]}...")
-
-#     summary = agent_response['summary_text']
-#     html_links = agent_response['search_html']
-#     print(f"Rendered HTML received: {html_links[:50]}...")
-#     print(f"summary received: {summary[:50]}...")
-#     return {
-#         "text": summary,
-#         "html_links": html_links,
-#         "source": "ADK Agent with Google Search"
-#     }
 
 @app.post("/links")
 async def links(
