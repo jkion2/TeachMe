@@ -70,7 +70,7 @@ def initialize_agent() -> Agent:
 
     # Video generation agent
     video_agent = Agent(
-        model=GEMINI_PRO,
+        model=GEMINI_FLASH,
         name="video_agent",
         instruction=load_prompt_template("templates/video.md"),
         before_agent_callback=agent_invoke_callback,
@@ -79,7 +79,7 @@ def initialize_agent() -> Agent:
 
     # Orchestrator agent
     orchestrator_agent = Agent(
-        model=GEMINI_PRO,
+        model=GEMINI_FLASH,
         name="orchestrator_agent",
         instruction=load_prompt_template("templates/orchestrator.md"),
         before_agent_callback=agent_invoke_callback,

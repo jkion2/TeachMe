@@ -63,21 +63,20 @@ def compile_code_to_video(file_name: str) -> None:
 
     commands: list[str] = [
         "manim",
-        "-pql",
+        "-q",
+        "l",
         "--fps",
         "10",
         "--media_dir",
         MEDIA_DUMP_DIR,
         file_path,
         "SolutionAnimation",
-        "-o",
-        video_path,
     ]
 
     result = subprocess.run(args=commands, capture_output=True, text=True)
 
     if result.returncode != 0:
-        raise Exception(result.stderr)
+        raise Exception(f"Video Compile Failed: {result.stderr}")
 
     print(f"{file_name} compiled successfully at {video_path}")
 
@@ -92,7 +91,17 @@ def fetch_video(file_name: str) -> str:
     Returns:
         str: The base64 encoded video data.
     """
-    video_path: str = f"{VIDEO_DIR}{file_name[:-3]}.mp4"
+    # go to the media dump directory
+    video_path: str = MEDIA_DUMP_DIR + "videos/"
+
+    # get full path
+    video_path = os.path.abspath(video_path)
+
+    # go to the video directory
+    video_path = video_path + "/" + file_name[:-3] + "/480p10/"
+
+    # go to the video file
+    video_path = video_path + "SolutionAnimation.mp4"
 
     with open(video_path, "rb") as file:
         video_data = file.read()
@@ -123,21 +132,17 @@ def fetech_latest_video_file() -> str:
 
 
 def fetch_desired_video() -> str:
-    """
-    Fetches the latest video file from the video directory and returns it as a base64 encoded string.
-    The video file is determined by comparing the latest code file and video file in the respective directories.
-    If the code and video files do not match, a ValueError is raised.
-    """
-    latest_code_file = fetch_latest_code_file()
-    latest_video_file = fetech_latest_video_file()
+    # get latest code file
+    code_path: str = fetch_latest_code_file()
 
-    c_name: str = latest_code_file.split("/")[-1]
-    v_name: str = latest_video_file.split("/")[-1]
+    # get the related video
+    try:
+        file_name: str = code_path.split("/")[-1]
+        video_path: str = fetch_video(file_name)
+    except FileNotFoundError:
+        raise Exception(f"Video failed to compile: {code_path}")
 
-    if not (c_name[:-3] == v_name[:-4]):
-        raise ValueError("Code and video files do not match")
-
-    with open(latest_video_file, "rb") as file:
+    # encode the video
+    with open(video_path, "rb") as file:
         video_data = file.read()
-
     return base64.b64encode(video_data).decode("utf-8")
