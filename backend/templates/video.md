@@ -69,6 +69,8 @@ class SolutionAnimation(Scene):
 - **TypeError**: Mobject.__init__() got an unexpected keyword argument 'width'
 - **TypeError**: All submobjects of VGroup must be of type VMobject. Got Group (Group) instead.
 - **TypeError**: Mobject.__getattr__.<locals>.getter() got an unexpected keyword argument 'color`
+- **TypeError**: Mobject.next_to() got an unexpected keyword argument 'align'
+
 ---
 
 ### **Behavioral Rules**

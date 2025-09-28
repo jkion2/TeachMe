@@ -1,78 +1,93 @@
-import random
+import asyncio
 from dataclasses import dataclass
 
-from google.adk import Runner
-from google.adk.agents import Agent
-from google.adk.sessions import InMemorySessionService
+import dotenv
+from google.genai.types import Blob, Content, Part
 
-MODEL_NAME = "gemini-2.0-flash"
-USER_ID = random.randint(1, 1000000)
+from manim_agents import SESSION_ID, USER_ID, prepare_session
+from manim_gen import fetch_desired_video
+from manim_utils import Timer
+
+dotenv.load_dotenv()
 
 
 @dataclass
 class VideoContext:
-    image: bytes | None = None
+    image: str | None = None
     context: str | None = None
 
 
-@dataclass
-class InvocationDetails:
-    session_id: int
-    executor: Runner
+def convert_image_to_part(image: str) -> Part:
+    # Decode the base64 string to bytes
+    image_bytes = image.encode("utf-8")
+
+    # Create a blob from the bytes
+    blob = Blob(data=image_bytes, mime_type="image/png")
+
+    # Create a Part object with the blob
+    part = Part(inline_data=blob)
+
+    return part
 
 
-def initialize_agent() -> InvocationDetails:
-    """Initializes the Manim video generation agent with tools and memory.
+async def invoke_agent(context: VideoContext) -> str:
+    # Unpack context
+    image = context.image
+    additional_context = context.context
+    has_image = image is not None
+    has_text = additional_context is not None
 
-    Returns:
-        Agent: The initialized Manim video generation agent.
-    """
-    manim_agent = Agent(
-        name="Manim_Generator",
-        description="Generates a Manim video based on an image and context.",
-        model=MODEL_NAME,
-        instruction="Talk like a pirate.",
-    )
+    # Prepare a session
+    with Timer("Prepare Session"):
+        runner = await prepare_session()
 
-    session_service = InMemorySessionService()
-    session_id: int = session_service.create_session(user_id=USER_ID).id
-    executor = Runner(session_service=session_service, agent=manim_agent)
+    # Bundle the context into a Content object
+    input_content = None
+    if not has_image and not has_text:
+        raise ValueError("Either image or context must be provided.")
+    elif has_text and not has_image:
+        input_content = Content(
+            parts=[
+                Part(text=additional_context),
+            ]
+        )
+    elif not has_text and has_image:
+        input_content = Content(
+            parts=[
+                convert_image_to_part(image),
+            ]
+        )
+    else:
+        input_content = Content(
+            parts=[
+                convert_image_to_part(image),
+                Part(text=additional_context),
+            ]
+        )
 
-    return InvocationDetails(session_id=session_id, executor=executor)
+    # Invoke the agent with the provided context
+    try:
+        async for event in runner.run_async(
+            user_id=USER_ID,
+            session_id=SESSION_ID,
+            new_message=input_content,
+        ):
+            print(f"Agent took an action: {event.actions}")
+        print("Agent actions complete")
+    except Exception as e:
+        print(f"Agent failed to take an action: {e}")
+        print("Video may have been compiled, continuing anyway...")
+
+    # Assume video has already been compiled
+    # Get most recent code and video file names
+    # If they match, then the video compiled successfully
+    # Return the video as a base64 encoded string
+    print("Fetching video...")
+    video: str = fetch_desired_video()
+    return video
 
 
-async def initial_code_write(
-    video_context: VideoContext, invocation_details: InvocationDetails
-) -> str:
-    exe = invocation_details.executor
-    result = await exe.invoke(query="", session_id=invocation_details.session_id)
-
-    return result.content
-
-
-def recurrent_code_edit(error: str) -> str: ...
-
-
-def code_execution(code: str) -> tuple[bool, str]: ...
-
-
-def invocation_loop(video_context: VideoContext, max_steps: int = 5) -> None:
-    # Initialize agent and context
-    invoke_details = initialize_agent()
-
-    # Write code
-
-    # Run the code
-
-    # Exit if code works
-
-    # Return error code if it doesn't work
-
-    # Repeat up to max_steps
-    pass
-
-
-def generate_manim_video(image: bytes, context: str) -> bytes:
+async def generate_manim_video(image: str | None, context: str | None) -> str:
     """This functino kicks off the video generation agent with the
     given image and context.
 
@@ -83,12 +98,20 @@ def generate_manim_video(image: bytes, context: str) -> bytes:
     Returns:
         bytes: The bytes of the generated video.
     """
-    video_context = VideoContext(image=image, context=context)
-    invocation_loop(video_context)
+    if not image and not context:
+        raise ValueError("Image and/or context must be provided.")
 
-    # Placeholder function to simulate video generation
-    return b"FAKE_VIDEO_BYTES"
+    with Timer("Invoke Agent"):
+        video = await invoke_agent(
+            context=VideoContext(
+                image=image,
+                context=context,
+            ),
+        )
+
+    return video
 
 
 if __name__ == "__main__":
-    generate_manim_video(b"FAKE_IMAGE_BYTES", "FAKE_CONTEXT")
+    with Timer("Generate Video"):
+        asyncio.run(generate_manim_video(None, "Breakdown the equation: y = mx + b."))

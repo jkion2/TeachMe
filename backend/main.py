@@ -13,7 +13,7 @@ async def read_root():
 
 
 @app.post("/links")
-async def links(context: str, image: string):
+async def links(context: str, image: str):
     """Endpoint for getting relevent links based on image and context."""
     return get_links(image, context)
 
@@ -25,9 +25,9 @@ async def chat(chat_history: list[dict]):
 
 
 @app.post("/manim")
-async def manim(context: str, image: string):
+async def manim(context: str, image: str) -> str:
     """Endpoint for generating a Manim video based on image and context."""
-    return generate_manim_video(image, context)
+    return await generate_manim_video(image, context)
 
 
 if __name__ == "__main__":

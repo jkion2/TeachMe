@@ -1,7 +1,4 @@
-*backend/manim/videos/images
-*backend/manim/videos/Tex
-*backend/manim/videos/texts
-*backend/manim/videos/videos
+*backend/manim/media/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
