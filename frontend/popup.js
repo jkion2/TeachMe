@@ -70,7 +70,7 @@ async function handleChatSend() {
         console.log("Sending chat message to API:", message)
         
         // Make API call
-        const response = await fetch(`${API_URL}/kushlinks`, {
+        const response = await fetch(`${API_URL}/chat`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
@@ -166,7 +166,7 @@ async function handleSubmit() {
     }
 
     // Make the initial API call
-    const response = await fetch(`${API_URL}/kushlinks`, {
+    const response = await fetch(`${API_URL}/links`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
