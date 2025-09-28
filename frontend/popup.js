@@ -7,7 +7,6 @@
 const sidebar = document.getElementById("sidebar")
 const collapseBtn = document.getElementById("collapseBtn")
 const textInput = document.getElementById("textInput")
-const imageInput = document.getElementById("imageInput")
 const contextInput = document.getElementById("contextInput")
 const submitBtn = document.getElementById("submitBtn")
 const fileName = document.getElementById("fileName")
@@ -26,8 +25,9 @@ function setupEventListeners() {
   // Sidebar collapse/expand
   collapseBtn.addEventListener("click", toggleSidebar)
 
-  // File upload handling
-  imageInput.addEventListener("change", handleFileUpload)
+  // CHANGE: File upload handling - open upload page instead of direct file input
+  const uploadBtn = document.querySelector('.upload-btn')
+  uploadBtn.addEventListener("click", handleUploadButtonClick)
 
   // Submit button
   submitBtn.addEventListener("click", handleSubmit)
@@ -49,6 +49,70 @@ function setupEventListeners() {
   })
   // Auto-resize chat input
   chatInput.addEventListener("input", autoResizeChatInput)
+}
+
+function handleUploadButtonClick(event){
+  event.preventDefault() //prevents default file input behavior
+
+  console.log("Opening upload Page...")
+
+  chrome.windows.create({
+    url: chrome.runtime.getURL('upload.html'),
+    type: 'popup',
+    width: 520,
+    height: 420,
+    focused: true
+  }, (window) =>{
+    if (chrome.runtime.lastError){
+      console.error("Error opening upload window",  chrome.runtime.lastError)
+    } else{
+      console.log("Upload Window Opened:", window.id)
+    }
+  })
+}
+
+if (chrome.runtime && chrome.runtime.onMessage){
+  chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+    if (message.action == 'imageSelected'){
+      console.log("Recieved image from Upload Page:", message.fileName)
+
+      //process the uploaded image
+      processUploadedImage(message)
+
+      //send a response back to the upload page
+      sendResponse ({status: 'success'})
+    }
+  })
+}
+
+function processUploadedImage(imageData){
+
+  const fileName = document.getElementById("fileName")
+  fileName.textContent = imageData.fileName
+
+  //Store the image Data to use in HandleSubmit
+  window.uploadedImageData = {
+    fileName: imageData.fileName,
+    base64Data: imageData.base64Data,
+    fileType: imageData.fileType,
+    fileSize: imageData.fileSize
+  }
+
+  //clear the text after image upload
+  textInput.value = ""
+
+  console.log("Image Processed:", imageData.fileName, "Size:", imageData.fileSize)
+
+  //for enable/disable submit button
+  validateInputs()
+}
+
+// Validates the Inputs
+function validateInputs(){
+  const hasText = textInput.value.trim().length > 0
+  const hasImage = window.uploadedImageData !== undefined && window.uploadedImageData !== null
+
+  submitBtn.disabled = !(hasText || hasImage)
 }
 
 // Fixed chat send function with proper API integration
@@ -122,145 +186,72 @@ function toggleSidebar() {
   console.log("Sidebar toggled:", isCollapsed ? "collapsed" : "expanded")
 }
 
-// File Upload Functions
-function handleFileUpload(event) {
-  const file = event.target.files[0]
-  if (file) {
-    fileName.textContent = file.name
-    // Clear text input when image is uploaded
-    textInput.value = ""
-    console.log("Image uploaded:", file.name)
-    validateInputs()
-  }
-}
-
-// Input Validation
-function validateInputs() {
-  const hasText = textInput.value.trim().length > 0
-  const hasImage = imageInput.files.length > 0
-
-  // Enable submit if either text or image is provided
-  submitBtn.disabled = !(hasText || hasImage)
-}
 
 // Modified Submit Function - handles initial submission and switches to chat mode
+// Function uses window.uploadedImageData populated by the upload page
 async function handleSubmit() {
-  const textValue = textInput.value.trim()
-  const imageFile = imageInput.files[0]
-  const contextValue = contextInput.value.trim()
+    const textValue = textInput.value.trim()
+    // const imageFile = imageInput.files[0] // REMOVED: No longer used
+    const contextValue = contextInput.value.trim()
 
-  const fullContext = `Question: ${textValue}. Additional Context: ${contextValue}`;
+    const fullContext = `Question: ${textValue}. Additional Context: ${contextValue}`;
 
-  console.log("Starting initial submission...")
-  console.log("Full context:", fullContext)
+    console.log("Starting initial submission...")
+    console.log("Full context:", fullContext)
 
-  // Show loading UI
-  showLoadingState()
+    // Show loading UI
+    showLoadingState()
 
-  try {
-    let imageData = "TEXT_PLACEHOLDER"
-    const formData = new FormData()
-    formData.append("context", fullContext)
-    if (imageFile) {
-        formData.append('image', imageFile);
-    }
+    try {
+        let imageData = "TEXT_PLACEHOLDER"
 
-    // 4. Make the API call using FormData
-    const response = await fetch(`${API_URL}/links`, {
-        method: "POST",
-        body: formData // Pass the FormData object directly
-    })
+        // CHECK IF IMAGE DATA WAS RECEIVED FROM THE UPLOAD POPUP
+        if (window.uploadedImageData && window.uploadedImageData.base64Data) {
+            imageData = window.uploadedImageData.base64Data
+            console.log("Using Uploaded Image:", window.uploadedImageData.fileName)
+        }
+        // NOTE: The separate convertImageToBase64 function is now redundant as 
+        // the image is pre-converted in the upload page and stored in window.uploadedImageData.
 
-    // --- (Rest of your success/error handling logic) ---
-    console.log("API Response Status:", response.status, response.statusText);
-    if (!response.ok) {
-        throw new Error(`API error: ${response.statusText}`)
-    }
-
-    const result = await response.json();
-    console.log("API Response Data:", result);
-
-    if (!response.ok) {
-        throw new Error(`API error: ${response.statusText}`)
-    }
-    // Switch to chat mode
-    switchToChatMode()
-
-    let formattedMessage = ""
-    if (Array.isArray(result) && result.length > 0) {
-            console.log("Processing array of", result.length, "links")
-            
-            // Start with a header
-            formattedMessage = `I found ${result.length} helpful resources for you:\n\n`
-            
-            // STEP 3: Loop through each link object and extract the data
-            result.forEach((linkObject, index) => {
-                console.log(`Processing link ${index + 1}:`, linkObject)
-                
-                // Extract the specific properties we want
-                const title = linkObject.title || "No title available"
-                const url = linkObject.url || "No URL available"
-                const snippet = linkObject.snippet || "No description available"
-                const relevanceScore = linkObject.relevance_score || 0
-                
-                console.log(`Link ${index + 1} extracted data:`, {
-                    title: title,
-                    url: url,
-                    snippet: snippet.substring(0, 50) + "...",
-                    relevance: relevanceScore
-                })
-                
-                // STEP 4: Format each link nicely as a string
-                formattedMessage += `${index + 1}. ${title}\n`
-                
-                // Only show URL if it's not 'N/A'
-                if (url !== 'N/A') {
-                    formattedMessage += `   🔗 ${url}\n`
-                }
-                
-                formattedMessage += `   📝 ${snippet}\n`
-                formattedMessage += `   📊 Relevance: ${Math.round(relevanceScore * 100)}%\n\n`
+        // Make the initial API call
+        const response = await fetch(`${API_URL}/links`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                context: fullContext,
+                image: imageData
             })
-            
-        } else {
-            console.log("No links found or result is not an array")
-            formattedMessage = "I couldn't find any relevant resources for your question. Try rephrasing it!"
+        })
+
+        if (!response.ok) {
+            throw new Error(`API error: ${response.statusText}`)
+        }
+
+        const result = await response.json()
+        console.log("Initial API Response:", result)
+        
+        // Extract response data
+        const summaryText = result.text || "No summary provided."
+        const linksHtml = result.html_links
+        const cleanSummary = summaryText.replace("##ADK_RESPONSE_END##", "").trim()
+
+        // Switch to chat mode
+        switchToChatMode()
+        
+        // Add initial assistant response
+        addChatMessage("assistant", cleanSummary)
+        
+        // Add HTML links if available
+        if (linksHtml) {
+            addHtmlMessage("assistant-html", linksHtml)
         }
         
-        // STEP 5: Log the final formatted message
-        console.log("Final formatted message:")
-        console.log("Message length:", formattedMessage.length)
-        console.log("Message preview:", formattedMessage.substring(0, 200) + "...")
-  
-    // Add initial assistant response
-    console.log("Adding chat message with formatted string")
-    addChatMessage("assistant", formattedMessage)
-    
-    // // Add HTML links if available
-    // if (linksHtml) {
-    //     addHtmlMessage("assistant-html", linksHtml)
-    // }
-    
-    // Show video player (simulate completion)
-    showVideoPlayer()
-
-  } catch (error) {
-    console.error("Error during initial submission:", error)
-    resetToPlaceholder()
-  }
-}
-
-
-function convertImageToBase64(file){
-  return new Promise((resolve, reject)=> {
-    const reader = new fileReader()
-    reader.onload = () => {
-      const base64 = reader.result.split(',')[1]
-      resolve(base64)
+        // Show video player (simulate completion)
+        showVideoPlayer()
+    } catch (error) {
+        console.error("Error during initial submission:", error)
+        resetToPlaceholder()
     }
-    reader.oneerror = reject
-    reader.readDataasURL(file)
-  })
 }
 
 // UI State Management Functions
@@ -435,7 +426,7 @@ function resetToPlaceholder() {
 function clearInputs() {
   textInput.value = ""
   contextInput.value = ""
-  imageInput.value = ""
+  window.uploadedImageData = null
   fileName.textContent = ""
   validateInputs()
 }

@@ -134,10 +134,12 @@ async def manim(
                 status_code=400,
                 detail=f"Failed to read image file: {str(img_error)}"
             )
+
+        encoded = base64.b64encode(image_bytes).decode("utf-8")
         
         # Generate video using the manim service
-        result = generate_manim_video(image_bytes, context)
-        
+        result = generate_manim_video(encoded, context)
+
         return {"video_data": result, "status": "success"}
         
     except HTTPException:
