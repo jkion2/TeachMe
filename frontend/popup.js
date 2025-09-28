@@ -18,8 +18,25 @@ const API_URL = "http://127.0.0.1:8000"
 // Initialize Event Listeners
 document.addEventListener("DOMContentLoaded", () => {
   setupEventListeners()
+  setupMarkdown()
   console.log("Main layout initialized")
 })
+
+function setupMarkdown() {
+  // Configure marked.js for better rendering
+  if (typeof marked !== 'undefined') {
+    marked.setOptions({
+      breaks: true,        // Enable line breaks
+      gfm: true,          // Enable GitHub Flavored Markdown
+      sanitize: false,    // Allow HTML (be careful with user input)
+      smartLists: true,   // Better list handling
+      smartypants: true   // Smart quotes and dashes
+    })
+    console.log("Markdown parser initialized")
+  } else {
+    console.warn("Marked.js library not loaded")
+  }
+}
 
 function setupEventListeners() {
   // Sidebar collapse/expand
@@ -133,25 +150,42 @@ async function handleChatSend() {
     try {
         console.log("Sending chat message to API:", message)
         
-        // Make API call
+        // Build chat history from existing messages
+        const chatHistory = buildChatHistoryFromDOM()
+        console.log("Chat history being sent:", chatHistory)
+        console.log("API URL:", `${API_URL}/chat`)
+        
+        // Add the current message to history
+        chatHistory.push({
+            role: "user",
+            content: message
+        })
+        
+        // Make API call to /chat endpoint
         const response = await fetch(`${API_URL}/chat`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
-                context: message, // Use the chat message as context
-                image: "TEXT_PLACEHOLDER"
+                chat_history: chatHistory
             })
         })
 
         if (!response.ok) {
-            throw new Error(`API error: ${response.statusText}`)
+            const errorText = await response.text()
+            console.error("API Response Error:", response.status, response.statusText)
+            console.error("Error body:", errorText)
+            throw new Error(`API error: ${response.status} ${response.statusText} - ${errorText}`)
         }
 
         const result = await response.json()
         console.log("Chat API Response:", result)
+        console.log("Response keys:", Object.keys(result))
+        console.log("Response structure:", JSON.stringify(result, null, 2))
         
-        // Extract and clean the response
-        const summaryText = result.text || "No summary provided."
+        // Extract and clean the response - backend uses "response" key
+        const summaryText = result.response || result.text || "No response provided."
+        console.log("Extracted summary text:", summaryText)
+        
         const linksHtml = result.html_links
         const cleanSummary = summaryText.replace("##ADK_RESPONSE_END##", "").trim()
         
@@ -165,6 +199,8 @@ async function handleChatSend() {
         
     } catch (error) {
         console.error("Error during chat API call:", error)
+        console.error("Error message:", error.message)
+        console.error("Error stack:", error.stack)
         addChatMessage("assistant", "Sorry, I encountered an error. Please try again.")
     } finally {
         // Re-enable send button
@@ -176,6 +212,38 @@ function autoResizeChatInput() {
     const chatInput = document.getElementById("chatInput")
     chatInput.style.height = "auto"
     chatInput.style.height = Math.min(chatInput.scrollHeight, 100) + "px"
+}
+
+// Helper function to build chat history from existing DOM messages
+function buildChatHistoryFromDOM() {
+    const chatMessages = document.getElementById("chatMessages")
+    const messages = chatMessages.querySelectorAll(".chat-message:not(.assistant-html)")
+    const history = []
+    
+    messages.forEach(messageDiv => {
+        if (messageDiv.classList.contains("user")) {
+            history.push({
+                role: "user",
+                content: messageDiv.textContent.trim()
+            })
+        } else if (messageDiv.classList.contains("assistant")) {
+            // For assistant messages, get the original text content
+            // If it contains HTML (from markdown), we need to extract the text
+            let content = messageDiv.textContent.trim()
+            
+            // Store the original markdown content if available
+            if (messageDiv.dataset.originalContent) {
+                content = messageDiv.dataset.originalContent
+            }
+            
+            history.push({
+                role: "assistant", 
+                content: content
+            })
+        }
+    })
+    
+    return history
 }
 
 // Sidebar Functions
@@ -191,10 +259,9 @@ function toggleSidebar() {
 // Function uses window.uploadedImageData populated by the upload page
 async function handleSubmit() {
     const textValue = textInput.value.trim()
-    // const imageFile = imageInput.files[0] // REMOVED: No longer used
     const contextValue = contextInput.value.trim()
 
-    const fullContext = `Question: ${textValue}. Additional Context: ${contextValue}`;
+    const fullContext = `Question: ${textValue}. Additional Context: ${contextValue}`.trim();
 
     console.log("Starting initial submission...")
     console.log("Full context:", fullContext)
@@ -203,24 +270,32 @@ async function handleSubmit() {
     showLoadingState()
 
     try {
-        let imageData = "TEXT_PLACEHOLDER"
+        // Prepare FormData for /links endpoint
+        const formData = new FormData()
+        formData.append('context', fullContext || '')
 
         // CHECK IF IMAGE DATA WAS RECEIVED FROM THE UPLOAD POPUP
         if (window.uploadedImageData && window.uploadedImageData.base64Data) {
-            imageData = window.uploadedImageData.base64Data
-            console.log("Using Uploaded Image:", window.uploadedImageData.fileName)
+            // Convert base64 to blob and add to FormData
+            const base64Data = window.uploadedImageData.base64Data
+            const byteString = atob(base64Data.split(',')[1])
+            const mimeString = base64Data.split(',')[0].split(':')[1].split(';')[0]
+            
+            const ab = new ArrayBuffer(byteString.length)
+            const ia = new Uint8Array(ab)
+            for (let i = 0; i < byteString.length; i++) {
+                ia[i] = byteString.charCodeAt(i)
+            }
+            
+            const blob = new Blob([ab], { type: mimeString })
+            formData.append('image', blob, window.uploadedImageData.fileName)
+            console.log("Using uploaded image:", window.uploadedImageData.fileName)
         }
-        // NOTE: The separate convertImageToBase64 function is now redundant as 
-        // the image is pre-converted in the upload page and stored in window.uploadedImageData.
 
-        // Make the initial API call
+        // Make the initial API call to /links endpoint
         const response = await fetch(`${API_URL}/links`, {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-                context: fullContext,
-                image: imageData
-            })
+            body: formData // Using FormData, no Content-Type header needed
         })
 
         if (!response.ok) {
@@ -228,28 +303,34 @@ async function handleSubmit() {
         }
 
         const result = await response.json()
-        console.log("Initial API Response:", result)
+        console.log("Links API Response:", result)
         
-        // Extract response data
-        const summaryText = result.text || "No summary provided."
-        const linksHtml = result.html_links
-        const cleanSummary = summaryText.replace("##ADK_RESPONSE_END##", "").trim()
-
         // Switch to chat mode
         switchToChatMode()
         
-        // Add initial assistant response
-        addChatMessage("assistant", cleanSummary)
-        
-        // Add HTML links if available
-        if (linksHtml) {
-            addHtmlMessage("assistant-html", linksHtml)
+        // Display the links as the initial conversation
+        if (result.links && result.links.length > 0) {
+            const linksText = `I found ${result.links.length} relevant educational resources for your question:`
+            // addChatMessage("assistant", linksText)
+            
+            // Create formatted links HTML
+            const linksHtml = result.links.map(link => 
+                `<div class="link-item">
+                    <a href="${link.url}" target="_blank" class="link-title">${link.title}</a>
+                    <p class="link-snippet">${link.snippet || ''}</p>
+                </div>`
+            ).join('')
+            
+            addHtmlMessage("assistant-html", `<div class="links-container">${linksHtml}</div>`)
+        } else {
+            addChatMessage("assistant", "I'm ready to help with your question. Please ask me anything!")
         }
         
         // Show video player (simulate completion)
         showVideoPlayer()
     } catch (error) {
         console.error("Error during initial submission:", error)
+        addChatMessage("assistant", "Sorry, I encountered an error processing your request. Please try again.")
         resetToPlaceholder()
     }
 }
@@ -322,26 +403,57 @@ function addChatMessage(sender, message) {
     const chatMessages = document.getElementById("chatMessages")
     const messageDiv = document.createElement("div")
     messageDiv.className = `chat-message ${sender}`
-    messageDiv.textContent = message
+    
+    // Check if the message contains markdown-like content
+    if (sender === 'assistant' && containsMarkdown(message)) {
+        // Store original content for chat history
+        messageDiv.dataset.originalContent = message
+        
+        // Parse markdown and render as HTML
+        const parsedMarkdown = marked.parse(message)
+        messageDiv.innerHTML = parsedMarkdown
+    } else {
+        // Plain text for user messages or simple assistant messages
+        messageDiv.textContent = message
+    }
+    
     chatMessages.appendChild(messageDiv)
     
     // Scroll to bottom
     chatMessages.scrollTop = chatMessages.scrollHeight
 }
 
+// Helper function to detect if content likely contains markdown
+function containsMarkdown(text) {
+    // Check for common markdown patterns
+    const markdownPatterns = [
+        /#{1,6}\s/,           // Headers (# ## ###)
+        /\*\*.*?\*\*/,        // Bold text
+        /\*.*?\*/,            // Italic text
+        /```[\s\S]*?```/,     // Code blocks
+        /`.*?`/,              // Inline code
+        /^\s*[\*\-\+]\s/m,    // Unordered lists
+        /^\s*\d+\.\s/m,       // Ordered lists
+        /\[.*?\]\(.*?\)/,     // Links
+        /^\s*>/m              // Blockquotes
+    ]
+    
+    return markdownPatterns.some(pattern => pattern.test(text))
+}
+
 /**
  * Adds HTML content to chat (for search result links)
  */
-// function addHtmlMessage(sender, htmlContent) {
-//     const chatMessages = document.getElementById("chatMessages");
-//     const messageDiv = document.createElement("div");
-//     messageDiv.className = `chat-message ${sender}`;
+function addHtmlMessage(sender, htmlContent) {
+    const chatMessages = document.getElementById("chatMessages");
+    const messageDiv = document.createElement("div");
+    messageDiv.className = `chat-message ${sender}`;
     
-//     // Render HTML content
-//     messageDiv.innerHTML = htmlContent;
-//     chatMessages.appendChild(messageDiv);
-//     chatMessages.scrollTop = chatMessages.scrollHeight;
-// }
+    // Render HTML content
+    messageDiv.innerHTML = htmlContent;
+    chatMessages.appendChild(messageDiv);
+    chatMessages.scrollTop = chatMessages.scrollHeight;
+}
 
 function clearChatMessages() {
     const chatMessages = document.getElementById("chatMessages")
