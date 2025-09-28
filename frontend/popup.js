@@ -134,7 +134,7 @@ async function handleChatSend() {
         console.log("Sending chat message to API:", message)
         
         // Make API call
-        const response = await fetch(`${API_URL}/kushlinks`, {
+        const response = await fetch(`${API_URL}/chat`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
@@ -248,7 +248,6 @@ async function handleSubmit() {
         
         // Show video player (simulate completion)
         showVideoPlayer()
-
     } catch (error) {
         console.error("Error during initial submission:", error)
         resetToPlaceholder()
@@ -333,16 +332,16 @@ function addChatMessage(sender, message) {
 /**
  * Adds HTML content to chat (for search result links)
  */
-function addHtmlMessage(sender, htmlContent) {
-    const chatMessages = document.getElementById("chatMessages");
-    const messageDiv = document.createElement("div");
-    messageDiv.className = `chat-message ${sender}`;
+// function addHtmlMessage(sender, htmlContent) {
+//     const chatMessages = document.getElementById("chatMessages");
+//     const messageDiv = document.createElement("div");
+//     messageDiv.className = `chat-message ${sender}`;
     
-    // Render HTML content
-    messageDiv.innerHTML = htmlContent;
-    chatMessages.appendChild(messageDiv);
-    chatMessages.scrollTop = chatMessages.scrollHeight;
-}
+//     // Render HTML content
+//     messageDiv.innerHTML = htmlContent;
+//     chatMessages.appendChild(messageDiv);
+//     chatMessages.scrollTop = chatMessages.scrollHeight;
+// }
 
 function clearChatMessages() {
     const chatMessages = document.getElementById("chatMessages")
