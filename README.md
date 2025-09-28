@@ -204,19 +204,6 @@ This project represents several cutting-edge innovations for Shell Hacks 2025:
 - **� Learning Analytics**: Progress tracking and personalized study recommendations
 - **🏫 LMS Integration**: Canvas, Blackboard, and Google Classroom compatibility
 
-## 🤝 Contributing
-
-We welcome contributions from the community! Whether you're interested in:
-
-- **🐛 Bug fixes and performance improvements
-- **✨ New animation types and educational domains
-- **🧠 Enhanced AI agent capabilities and response quality
-- **🎨 UI/UX improvements for better accessibility
-- **📚 Documentation updates and example expansions
-- **🌍 Internationalization and localization support
-
-Check out our [Contributing Guidelines](CONTRIBUTING.md) to get started.
-
 ## 👥 Team
 
 Built with ❤️ by the TeachMe team for Shell Hacks 2025
@@ -225,10 +212,6 @@ Built with ❤️ by the TeachMe team for Shell Hacks 2025
 - **Kush Havinal** - Frontend Developer & Chrome Extension Lead  
 - **Marion Forrest** - Backend Developer & Manim Animation Expert
 - **Alvin Abraham** - Full Stack Developer & System Architecture
-
-## 📄 License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
 ## 🙏 Acknowledgments
 
