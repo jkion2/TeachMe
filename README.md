@@ -2,9 +2,16 @@
 
 *A Chrome extension that turns questions into step-by-step explanations with AI tutoring and Manim animations.*
 
-[![Shell Hacks 2025](https://img.shields.io/badge/Shell%20Hacks-2025-blue?style=for-the-badge)](https://shellhacks.net/)  
-[![Manim Powered](https://img.shields.io/badge/Manim-Powered-orange?style=for-the-badge)](https://manim.community/)  
-[![Chrome Extension](https://img.shields.io/badge/Chrome-Extension-4285F4?style=for-the-badge)](https://developer.chrome.com/docs/extensions/)  
+[![Shell Hacks 2025](https://img.shields.io/badge/Shell%20Hacks-2025-blue?style=for-the-badge)](https://shellhacks.net/) 
+[![Manim Powered](https://img.shields.io/badge/Manim-Powered-orange?style=for-the-badge)](https://manim.community/) 
+[![Chrome Extension](https://img.shields.io/badge/Chrome-Extension-4285F4?style=for-the-badge)](https://developer.chrome.com/docs/extensions/) 
+
+---
+
+<img width="1919" height="1079" alt="Screenshot 2025-09-28 102559" src="https://github.com/user-attachments/assets/96fc018a-0a7a-48c5-9b21-048ef947749d" />
+<img width="1919" height="1079" alt="Screenshot 2025-09-28 102923" src="https://github.com/user-attachments/assets/58990943-0fd0-4c9d-902d-8a43d417d8c0" />
+<img width="1919" height="1079" alt="Screenshot 2025-09-28 102712" src="https://github.com/user-attachments/assets/064290d2-c4af-43cf-9b6a-8c7c8330fb2e" />
+<img width="1919" height="1079" alt="Screenshot 2025-09-28 102622" src="https://github.com/user-attachments/assets/4c789961-cff0-4932-bb51-3eb1b7270795" />
 
 ---
 
