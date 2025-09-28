@@ -17,6 +17,7 @@ from google.adk.agents import Agent, LlmAgent
 from google.adk.tools import google_search
 from google.adk.tools.agent_tool import AgentTool
 from google.genai import types
+from google.genai.types import Blob, Content, Part
 from google.adk.sessions import InMemorySessionService
 from google.adk.runners import Runner
 
@@ -27,6 +28,50 @@ class Link:
     url: str
     snippet: str
     relevance_score: float = 0.0
+
+def convert_image_bytes_to_part(image_data: bytes) -> Part:
+    """Convert image bytes to a Part object for agent consumption.
+    
+    Args:
+        image_data: Raw image data in bytes
+        
+    Returns:
+        Part object containing the image blob
+    """
+    # Try to determine the image format by examining the header bytes
+    mime_type = "image/png"  # default
+    
+    if image_data.startswith(b'\xff\xd8\xff'):
+        mime_type = "image/jpeg"
+    elif image_data.startswith(b'\x89PNG'):
+        mime_type = "image/png"
+    elif image_data.startswith(b'GIF87a') or image_data.startswith(b'GIF89a'):
+        mime_type = "image/gif"
+    elif image_data.startswith(b'RIFF') and b'WEBP' in image_data[:12]:
+        mime_type = "image/webp"
+    
+    # Create a blob from the bytes
+    blob = Blob(data=image_data, mime_type=mime_type)
+    
+    # Create a Part object with the blob
+    part = Part(inline_data=blob)
+    
+    return part
+
+def convert_base64_image_to_part(image_base64: str) -> Part:
+    """Convert base64 encoded image to a Part object for agent consumption.
+    
+    Args:
+        image_base64: Base64 encoded image string
+        
+    Returns:
+        Part object containing the image blob
+    """
+    # Decode the base64 string to bytes
+    image_bytes: bytes = base64.b64decode(image_base64)
+    
+    # Use the existing function to convert bytes to part
+    return convert_image_bytes_to_part(image_bytes)
 
 # Define the Educational Search Agent
 search_agent = Agent(
@@ -105,8 +150,15 @@ async def setup_session_and_runner():
     return session, runner
 
 # Agent Interaction
-async def call_chat_agent(query):
-    content = types.Content(role='user', parts=[types.Part(text=query)])
+async def call_chat_agent(content: Content):
+    """Call the chat agent with Content that may include text and/or images.
+    
+    Args:
+        content: Content object containing text and/or image parts
+        
+    Returns:
+        Agent response as string
+    """
     session, runner = await setup_session_and_runner()
     
     try:
@@ -138,32 +190,50 @@ async def get_links(image_data: bytes, context: str) -> List[Dict[str, str]]:
     print(f"Getting links - Context: {bool(context)}, Image: {bool(image_data)}")
     
     try:
-        # Combined context from text and image analysis
-        combined_context = context or ""
+        # Prepare parts for the Content object
+        parts = []
         
-        # If image is provided, analyze it first
+        # Add text context if provided
+        if context and context.strip():
+            search_prompt = f"""Find educational resources for this problem/topic: {context}
+        
+            Focus on finding:
+            1. Tutorial websites and step-by-step guides
+            2. Educational videos
+            3. Interactive learning tools
+            4. Practice problems and examples
+            5. Concept explanations
+            
+            Please search for relevant educational content and return the most helpful resources. Respond with concise web links only to all the resources."""
+            parts.append(Part(text=search_prompt))
+        
+        # Add image if provided
         if image_data and len(image_data) > 0:
-            combined_context = f"{combined_context}\n\nQuestion/Problem Image Bytes: {image_data}".strip()
+            image_part = convert_image_bytes_to_part(image_data)
+            parts.append(image_part)
+            
+            # If we only have an image, add a text prompt for analysis
+            if not context or not context.strip():
+                analysis_prompt = """Analyze this image and find relevant educational resources. Focus on:
+                1. Tutorial websites and step-by-step guides
+                2. Educational videos related to the concepts shown
+                3. Interactive learning tools
+                4. Practice problems and examples
+                5. Concept explanations
+                
+                Please search for relevant educational content and return the most helpful resources. Respond with concise web links only to all the resources."""
+                parts.append(Part(text=analysis_prompt))
         
         # If no context at all, return fallback
-        if not combined_context.strip():
+        if not parts:
             return _get_fallback_links()
         
-        # Use the search agent to find educational resources
-        search_prompt = f"""Find educational resources for this problem/topic: {combined_context}
-        
-        Focus on finding:
-        1. Tutorial websites and step-by-step guides
-        2. Educational videos
-        3. Interactive learning tools
-        4. Practice problems and examples
-        5. Concept explanations
-        
-        Please search for relevant educational content and return the most helpful resources. Respond with concise web links only to all the resources."""
+        # Create Content object with all parts
+        content = Content(role='user', parts=parts)
         
         # Execute search using the agent
-        print(f"Calling search agent with prompt: {search_prompt[:100]}...")
-        agent_response = await call_chat_agent(search_prompt)
+        print(f"Calling search agent with {len(parts)} parts...")
+        agent_response = await call_chat_agent(content)
 
         print(f"Agent response received: {agent_response}")
         
@@ -189,18 +259,19 @@ async def get_links(image_data: bytes, context: str) -> List[Dict[str, str]]:
         print(f"Error in get_links: {e}")
         return _get_fallback_links()
 
-async def converse(chat_history: List[Dict[str, str]]) -> Dict[str, Any]:
+async def converse(chat_history: List[Dict[str, str]], image_data: bytes = None) -> Dict[str, Any]:
     """
     Second endpoint: Handle conversational interaction about the problem.
     Uses the conversation agent for educational tutoring.
     
     Args:
         chat_history: List of chat messages with role and content
+        image_data: Optional image data in bytes for visual context
     
     Returns:
         Response with AI message, suggestions, and follow-up questions
     """
-    print(f"Processing conversation with {len(chat_history)} messages")
+    print(f"Processing conversation with {len(chat_history)} messages and image: {bool(image_data)}")
     
     try:
         # Extract context from first message if available
@@ -211,11 +282,22 @@ async def converse(chat_history: List[Dict[str, str]]) -> Dict[str, Any]:
                 context = first_message
         
         # Build conversation prompt for the tutor agent
-        conversation_prompt = _build_conversation_prompt(chat_history, context)
+        conversation_text = _build_conversation_prompt(chat_history, context)
+        
+        # Prepare parts for the Content object
+        parts = [Part(text=conversation_text)]
+        
+        # Add image if provided
+        if image_data and len(image_data) > 0:
+            image_part = convert_image_bytes_to_part(image_data)
+            parts.append(image_part)
+        
+        # Create Content object
+        content = Content(role='user', parts=parts)
         
         # Use the conversation agent to generate response
-        print(f"Calling conversation agent with prompt: {conversation_prompt[:100]}...")
-        agent_response = await call_chat_agent(conversation_prompt)
+        print(f"Calling conversation agent with {len(parts)} parts...")
+        agent_response = await call_chat_agent(content)
         
         print(f"Conversation agent response: {agent_response}")
         

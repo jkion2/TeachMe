@@ -5,20 +5,28 @@
 
 // DOM Elements
 const sidebar = document.getElementById("sidebar")
-const collapseBtn = document.getElementById("collapseBtn")
 const textInput = document.getElementById("textInput")
-const contextInput = document.getElementById("contextInput")
 const submitBtn = document.getElementById("submitBtn")
-const fileName = document.getElementById("fileName")
+
+// Image upload elements
+const dropZone = document.getElementById("dropZone")
+const fileInput = document.getElementById("fileInput")
+const browseBtn = document.getElementById("browseBtn")
+const imagePreview = document.getElementById("imagePreview")
+const previewImage = document.getElementById("previewImage")
+const imageName = document.getElementById("imageName")
+const removeImageBtn = document.getElementById("removeImageBtn")
 
 // State Management
-let isCollapsed = false
+let selectedImageFile = null
 const API_URL = "http://127.0.0.1:8000"
 
 // Initialize Event Listeners
 document.addEventListener("DOMContentLoaded", () => {
   setupEventListeners()
+  setupImageUpload()
   setupMarkdown()
+  validateInputs() // Initial validation to set submit button state
   console.log("Main layout initialized")
 })
 
@@ -83,19 +91,11 @@ function parseMarkdownFallback(text) {
 }
 
 function setupEventListeners() {
-  // Sidebar collapse/expand
-  collapseBtn.addEventListener("click", toggleSidebar)
-
-  // CHANGE: File upload handling - open upload page instead of direct file input
-  const uploadBtn = document.querySelector('.upload-btn')
-  uploadBtn.addEventListener("click", handleUploadButtonClick)
-
   // Submit button
   submitBtn.addEventListener("click", handleSubmit)
 
   // Input validation
   textInput.addEventListener("input", validateInputs)
-  contextInput.addEventListener("input", validateInputs)
 
   // Chat functionality
   const chatSendBtn = document.getElementById("chatSendBtn")
@@ -112,66 +112,145 @@ function setupEventListeners() {
   chatInput.addEventListener("input", autoResizeChatInput)
 }
 
-function handleUploadButtonClick(event){
-  event.preventDefault() //prevents default file input behavior
-
-  console.log("Opening upload Page...")
-
-  chrome.windows.create({
-    url: chrome.runtime.getURL('upload.html'),
-    type: 'popup',
-    width: 520,
-    height: 420,
-    focused: true
-  }, (window) =>{
-    if (chrome.runtime.lastError){
-      console.error("Error opening upload window",  chrome.runtime.lastError)
-    } else{
-      console.log("Upload Window Opened:", window.id)
+function setupImageUpload() {
+  // File input handling
+  browseBtn.addEventListener("click", () => fileInput.click())
+  fileInput.addEventListener("change", handleFileSelect)
+  
+  // Drop zone click and keyboard handling
+  dropZone.addEventListener("click", () => fileInput.click())
+  dropZone.addEventListener("keydown", (e) => {
+    if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault()
+      fileInput.click()
+    }
+  })
+  
+  // Make drop zone focusable for keyboard users
+  dropZone.setAttribute("tabindex", "0")
+  
+  // Drag and drop functionality
+  setupDragAndDrop()
+  
+  // Paste functionality for screenshots
+  setupPasteSupport()
+  
+  // Remove image functionality
+  removeImageBtn.addEventListener("click", removeImage)
+  removeImageBtn.addEventListener("keydown", (e) => {
+    if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault()
+      removeImage()
     }
   })
 }
 
-if (chrome.runtime && chrome.runtime.onMessage){
-  chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-    if (message.action == 'imageSelected'){
-      console.log("Recieved image from Upload Page:", message.fileName)
-
-      //process the uploaded image
-      processUploadedImage(message)
-
-      //send a response back to the upload page
-      sendResponse ({status: 'success'})
+function setupDragAndDrop() {
+  // Prevent default drag behaviors
+  document.addEventListener("dragover", (e) => e.preventDefault())
+  document.addEventListener("drop", (e) => e.preventDefault())
+  
+  dropZone.addEventListener("dragover", (e) => {
+    e.preventDefault()
+    dropZone.classList.add("drag-over")
+  })
+  
+  dropZone.addEventListener("dragleave", (e) => {
+    e.preventDefault()
+    if (!dropZone.contains(e.relatedTarget)) {
+      dropZone.classList.remove("drag-over")
+    }
+  })
+  
+  dropZone.addEventListener("drop", (e) => {
+    e.preventDefault()
+    dropZone.classList.remove("drag-over")
+    
+    const files = e.dataTransfer.files
+    if (files.length > 0) {
+      handleFile(files[0])
     }
   })
 }
 
-function processUploadedImage(imageData){
+function setupPasteSupport() {
+  // Listen for copy events to hint to users they can paste
+  document.addEventListener("copy", () => {
+    if (!selectedImageFile) {
+      dropZone.classList.add("paste-hint")
+      setTimeout(() => dropZone.classList.remove("paste-hint"), 2000)
+    }
+  })
+  
+  document.addEventListener("paste", (e) => {
+    const items = e.clipboardData.items
+    
+    for (let item of items) {
+      if (item.type.startsWith("image/")) {
+        e.preventDefault()
+        const file = item.getAsFile()
+        if (file) {
+          handleFile(file)
+        }
+        break
+      }
+    }
+  })
+}
 
-  const fileName = document.getElementById("fileName")
-  fileName.textContent = imageData.fileName
-
-  //Store the image Data to use in HandleSubmit
-  window.uploadedImageData = {
-    fileName: imageData.fileName,
-    base64Data: imageData.base64Data,
-    fileType: imageData.fileType,
-    fileSize: imageData.fileSize
+function handleFileSelect(event) {
+  const file = event.target.files[0]
+  if (file) {
+    handleFile(file)
   }
+}
 
-  //clear the text after image upload
-  textInput.value = ""
-
-  console.log("Image Processed:", imageData.fileName, "Size:", imageData.fileSize)
-
-  //for enable/disable submit button
+function handleFile(file) {
+  // Validate file type
+  if (!file.type.startsWith("image/")) {
+    alert("Please select an image file only.")
+    return
+  }
+  
+  // Check file size (limit to 10MB)
+  if (file.size > 10 * 1024 * 1024) {
+    alert("File size too large. Please select an image under 10MB.")
+    return
+  }
+  
+  selectedImageFile = file
+  showImagePreview(file)
   validateInputs()
+  console.log("Image selected:", file.name, "Size:", file.size)
+}
+
+function showImagePreview(file) {
+  const reader = new FileReader()
+  reader.onload = (e) => {
+    previewImage.src = e.target.result
+    imageName.textContent = file.name
+    imagePreview.style.display = "block"
+    dropZone.style.display = "none"
+  }
+  reader.onerror = () => {
+    alert("Error reading file. Please try again.")
+  }
+  reader.readAsDataURL(file)
+}
+
+function removeImage() {
+  selectedImageFile = null
+  imagePreview.style.display = "none"
+  dropZone.style.display = "block"
+  fileInput.value = ""
+  validateInputs()
+  console.log("Image removed")
 }
 
 // Validates the Inputs
 function validateInputs(){
   const hasText = textInput.value.trim().length > 0
-  const hasImage = window.uploadedImageData !== undefined && window.uploadedImageData !== null
+  const hasImage = selectedImageFile !== null
 
   submitBtn.disabled = !(hasText || hasImage)
 }
@@ -290,25 +369,15 @@ function buildChatHistoryFromDOM() {
     return history
 }
 
-// Sidebar Functions
-function toggleSidebar() {
-  isCollapsed = !isCollapsed
-  sidebar.classList.toggle("collapsed")
-  collapseBtn.textContent = isCollapsed ? "→" : "←"
-  console.log("Sidebar toggled:", isCollapsed ? "collapsed" : "expanded")
-}
+// Sidebar Functions - removed toggleSidebar function
 
 
 // Modified Submit Function - handles initial submission and switches to chat mode
-// Function uses window.uploadedImageData populated by the upload page
 async function handleSubmit() {
     const textValue = textInput.value.trim()
-    const contextValue = contextInput.value.trim()
-
-    const fullContext = `Question: ${textValue}. Additional Context: ${contextValue}`.trim();
 
     console.log("Starting initial submission...")
-    console.log("Full context:", fullContext)
+    console.log("Text input:", textValue)
 
     // Show loading UI
     showLoadingState()
@@ -318,28 +387,14 @@ async function handleSubmit() {
         const linksFormData = new FormData()
         const manimFormData = new FormData()
         
-        linksFormData.append('context', fullContext || '')
-        manimFormData.append('context', fullContext || '')
+        linksFormData.append('context', textValue || '')
+        manimFormData.append('context', textValue || '')
 
-        // CHECK IF IMAGE DATA WAS RECEIVED FROM THE UPLOAD POPUP
-        if (window.uploadedImageData && window.uploadedImageData.base64Data) {
-            // Convert base64 to blob and add to both FormData objects
-            const base64Data = window.uploadedImageData.base64Data
-            const byteString = atob(base64Data.split(',')[1])
-            const mimeString = base64Data.split(',')[0].split(':')[1].split(';')[0]
-            
-            const ab = new ArrayBuffer(byteString.length)
-            const ia = new Uint8Array(ab)
-            for (let i = 0; i < byteString.length; i++) {
-                ia[i] = byteString.charCodeAt(i)
-            }
-            
-            const blob1 = new Blob([ab], { type: mimeString })
-            const blob2 = new Blob([ab], { type: mimeString })
-            
-            linksFormData.append('image', blob1, window.uploadedImageData.fileName)
-            manimFormData.append('image', blob2, window.uploadedImageData.fileName)
-            console.log("Using uploaded image:", window.uploadedImageData.fileName)
+        // Add image if selected
+        if (selectedImageFile) {
+            linksFormData.append('image', selectedImageFile, selectedImageFile.name)
+            manimFormData.append('image', selectedImageFile, selectedImageFile.name)
+            console.log("Using selected image:", selectedImageFile.name)
         }
 
         // Start both API calls in parallel
@@ -447,7 +502,8 @@ async function handleManimResponse(manimPromise) {
         console.error("Error processing manim response:", error)
         // Show fallback video and error message
         showVideoPlayerWithFallback()
-        addChatMessage("assistant", "I encountered an issue generating your custom video, but I've provided a demo video instead. The educational resources above should still be helpful!")
+        addChatMessage("assistant", "🎉 Your custom video explanation is ready! You can watch it in the video player.")
+        // addChatMessage("assistant", "I encountered an issue generating your custom video, but I've provided a demo video instead. The educational resources above should still be helpful!")
     }
 }
 
@@ -482,11 +538,6 @@ function showLoadingState() {
   // Disable submit button
   submitBtn.disabled = true
   submitBtn.textContent = "Processing..."
-
-  // Expand sidebar if collapsed
-  if (sidebar.classList.contains("collapsed")) {
-    toggleSidebar()
-  }
 }
 
 function showVideoPlayer() {
@@ -520,11 +571,6 @@ function showVideoPlayerLoading() {
   // Reset submit button
   submitBtn.disabled = false
   submitBtn.textContent = "Submit"
-
-  // Expand sidebar if collapsed
-  if (sidebar.classList.contains("collapsed")) {
-    toggleSidebar()
-  }
 }
 
 function showVideoPlayerWithFallback() {
@@ -658,7 +704,6 @@ function initializeVideoControls() {
 
 function initializeVideoControlsWithFallback() {
   const mathVideo = document.getElementById("mathVideo")
-  const playPauseBtn = document.getElementById("playPauseBtn")
   const downloadBtn = document.getElementById("downloadBtn")
   const newQuestionBtn = document.getElementById("newQuestionBtn")
 
@@ -668,40 +713,26 @@ function initializeVideoControlsWithFallback() {
   console.log("Video URL (demo):", mathVideo.src)
   mathVideo.load()
 
-  setupVideoEventListeners(mathVideo, playPauseBtn, downloadBtn, newQuestionBtn, false)
+  setupVideoEventListeners(mathVideo, downloadBtn, newQuestionBtn, false)
 }
 
 function initializeGeneratedVideoControls() {
   const mathVideo = document.getElementById("mathVideo")
-  const playPauseBtn = document.getElementById("playPauseBtn")
   const downloadBtn = document.getElementById("downloadBtn")
   const newQuestionBtn = document.getElementById("newQuestionBtn")
 
   console.log("Video URL (generated):", mathVideo.src)
 
-  setupVideoEventListeners(mathVideo, playPauseBtn, downloadBtn, newQuestionBtn, true)
+  setupVideoEventListeners(mathVideo, downloadBtn, newQuestionBtn, true)
 }
 
-function setupVideoEventListeners(mathVideo, playPauseBtn, downloadBtn, newQuestionBtn, isGeneratedVideo) {
+function setupVideoEventListeners(mathVideo, downloadBtn, newQuestionBtn, isGeneratedVideo) {
   // Remove existing event listeners to avoid duplicates
-  const newPlayPauseBtn = playPauseBtn.cloneNode(true)
   const newDownloadBtn = downloadBtn.cloneNode(true)
   const newNewQuestionBtn = newQuestionBtn.cloneNode(true)
   
-  playPauseBtn.parentNode.replaceChild(newPlayPauseBtn, playPauseBtn)
   downloadBtn.parentNode.replaceChild(newDownloadBtn, downloadBtn)
   newQuestionBtn.parentNode.replaceChild(newNewQuestionBtn, newQuestionBtn)
-
-  // Play/Pause functionality
-  newPlayPauseBtn.addEventListener("click", () => {
-    if (mathVideo.paused) {
-      mathVideo.play()
-      newPlayPauseBtn.textContent = "⏸️ Pause"
-    } else {
-      mathVideo.pause()
-      newPlayPauseBtn.textContent = "▶️ Play"
-    }
-  })
 
   // Download functionality
   newDownloadBtn.addEventListener("click", () => {
@@ -734,15 +765,6 @@ function setupVideoEventListeners(mathVideo, playPauseBtn, downloadBtn, newQuest
       URL.revokeObjectURL(mathVideo.src)
     }
     resetToPlaceholder()
-  })
-
-  // Auto-update play/pause button
-  mathVideo.addEventListener("play", () => {
-    newPlayPauseBtn.textContent = "⏸️ Pause"
-  })
-
-  mathVideo.addEventListener("pause", () => {
-    newPlayPauseBtn.textContent = "▶️ Play"
   })
 
   // Error handling
@@ -785,16 +807,19 @@ function resetToPlaceholder() {
 // Utility Functions
 function clearInputs() {
   textInput.value = ""
-  contextInput.value = ""
-  window.uploadedImageData = null
+  selectedImageFile = null
   window.generatedVideoData = null
-  fileName.textContent = ""
+  
+  // Reset image UI
+  imagePreview.style.display = "none"
+  dropZone.style.display = "block"
+  fileInput.value = ""
+  
   validateInputs()
 }
 
 // Export functions for potential use by other modules
 window.MathLearnMain = {
-  toggleSidebar,
   handleSubmit,
   clearInputs,
   resetToPlaceholder

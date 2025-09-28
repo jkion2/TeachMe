@@ -16,28 +16,36 @@
             <!-- Sidebar Header -->
             <div class="sidebar-header">
                 <h2>TeachMe</h2>
-                <button class="collapse-btn" id="collapseBtn">←</button>
             </div>
 
             <!-- Input Section -->
             <div class="input-section">
-                <!-- Text OR Image Input -->
+                <!-- Text Input -->
                 <div class="input-group">
-                    <label>Enter text or upload image:</label>
-                    <textarea id="textInput" placeholder="Enter your math question..."></textarea>
-                    <div class="file-upload">
-                        <input type="file" id="imageInput" accept="image/*" hidden>
-                        <button class="upload-btn" onclick="document.getElementById('imageInput').click()">
-                            📁 Upload Image
-                        </button>
-                        <span id="fileName"></span>
-                    </div>
+                    <label>Enter your math question or add context:</label>
+                    <textarea id="textInput" placeholder="Enter your math question or additional context..."></textarea>
                 </div>
 
-                <!-- Additional Context -->
+                <!-- Image Upload Section -->
                 <div class="input-group">
-                    <label>Additional context:</label>
-                    <textarea id="contextInput" placeholder="Add any additional context..."></textarea>
+                    <label>Add an image (optional):</label>
+                    <div id="dropZone" class="drop-zone" title="Click to browse, drag & drop images, or paste screenshots with Ctrl+V">
+                        <div class="drop-content">
+                            <div class="upload-icon">📁</div>
+                            <p>Drag & drop an image, paste a screenshot (Ctrl+V), or click to browse</p>
+                            <button id="browseBtn" class="browse-btn">Choose File</button>
+                        </div>
+                    </div>
+                    <input type="file" id="fileInput" accept="image/*" style="display: none;">
+                    
+                    <!-- Image Preview -->
+                    <div id="imagePreview" class="image-preview" style="display: none;">
+                        <img id="previewImage" alt="Preview">
+                        <div class="image-info">
+                            <span id="imageName"></span>
+                            <button id="removeImageBtn" class="remove-btn" title="Remove image">&times;</button>
+                        </div>
+                    </div>
                 </div>
 
                 <!-- Submit Button -->
@@ -86,9 +94,7 @@
                     
                     <!-- Video Controls -->
                     <div class="video-controls">
-                        <button class="video-btn" id="playPauseBtn">⏸️ Pause</button>
                         <button class="video-btn" id="downloadBtn">⬇️ Download</button>
-                        <button class="video-btn" id="uploadYoutubeBtn">📤 Upload to YouTube</button>
                         <button class="video-btn" id="newQuestionBtn">➕ New Question</button>
                     </div>
                 </div>
