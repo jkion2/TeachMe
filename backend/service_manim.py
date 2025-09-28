@@ -114,4 +114,9 @@ async def generate_manim_video(image: str | None, context: str | None) -> str:
 
 if __name__ == "__main__":
     with Timer("Generate Video"):
-        asyncio.run(generate_manim_video(None, "Breakdown the equation: y = mx + b."))
+        asyncio.run(
+            generate_manim_video(
+                None,
+                "This is a test. Just draw a circle. Do not explain anything. Just draw a circle.",
+            )
+        )
