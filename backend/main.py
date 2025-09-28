@@ -71,6 +71,7 @@ async def links(
         
         # Get relevant links using the search agent
         result_links = await get_links(image_bytes, context or "")
+        result_links = result_links[:min(len(result_links), 5)]
         
         print(f"Returning {len(result_links)} links")
         return {"links": result_links, "status": "success"}

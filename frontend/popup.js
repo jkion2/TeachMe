@@ -32,10 +32,54 @@ function setupMarkdown() {
       smartLists: true,   // Better list handling
       smartypants: true   // Smart quotes and dashes
     })
-    console.log("Markdown parser initialized")
+    console.log("Marked.js library loaded successfully")
   } else {
-    console.warn("Marked.js library not loaded")
+    console.warn("Marked.js library not loaded, using fallback parser")
+    // Create a simple fallback markdown parser
+    window.marked = {
+      parse: function(text) {
+        return parseMarkdownFallback(text)
+      }
+    }
   }
+}
+
+// Fallback markdown parser for basic formatting
+function parseMarkdownFallback(text) {
+  let html = text
+  
+  // Headers
+  html = html.replace(/^### (.*$)/gim, '<h3>$1</h3>')
+  html = html.replace(/^## (.*$)/gim, '<h2>$1</h2>')
+  html = html.replace(/^# (.*$)/gim, '<h1>$1</h1>')
+  
+  // Bold text
+  html = html.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+  
+  // Italic text
+  html = html.replace(/\*(.*?)\*/g, '<em>$1</em>')
+  
+  // Inline code
+  html = html.replace(/`(.*?)`/g, '<code>$1</code>')
+  
+  // Code blocks
+  html = html.replace(/```([\s\S]*?)```/g, '<pre><code>$1</code></pre>')
+  
+  // Unordered lists
+  html = html.replace(/^\s*[-*+] (.*$)/gim, '<li>$1</li>')
+  html = html.replace(/(<li>.*<\/li>)/s, '<ul>$1</ul>')
+  
+  // Ordered lists  
+  html = html.replace(/^\s*\d+\. (.*$)/gim, '<li>$1</li>')
+  html = html.replace(/(<li>.*<\/li>)/s, '<ol>$1</ol>')
+  
+  // Links
+  html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank">$1</a>')
+  
+  // Line breaks
+  html = html.replace(/\n/g, '<br>')
+  
+  return html
 }
 
 function setupEventListeners() {
@@ -311,7 +355,7 @@ async function handleSubmit() {
         // Display the links as the initial conversation
         if (result.links && result.links.length > 0) {
             const linksText = `I found ${result.links.length} relevant educational resources for your question:`
-            // addChatMessage("assistant", linksText)
+            addChatMessage("assistant", linksText)
             
             // Create formatted links HTML
             const linksHtml = result.links.map(link => 
@@ -406,12 +450,18 @@ function addChatMessage(sender, message) {
     
     // Check if the message contains markdown-like content
     if (sender === 'assistant' && containsMarkdown(message)) {
-        // Store original content for chat history
-        messageDiv.dataset.originalContent = message
-        
-        // Parse markdown and render as HTML
-        const parsedMarkdown = marked.parse(message)
-        messageDiv.innerHTML = parsedMarkdown
+        try {
+            // Store original content for chat history
+            messageDiv.dataset.originalContent = message
+            
+            // Parse markdown and render as HTML
+            const parsedMarkdown = marked.parse(message)
+            messageDiv.innerHTML = parsedMarkdown
+        } catch (error) {
+            console.error("Error parsing markdown:", error)
+            // Fallback to plain text if markdown parsing fails
+            messageDiv.textContent = message
+        }
     } else {
         // Plain text for user messages or simple assistant messages
         messageDiv.textContent = message
